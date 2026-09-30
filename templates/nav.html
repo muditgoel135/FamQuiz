@@ -1,23 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FamQuiz</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-
-<body>
-    <nav>
-        <h1>Welcome to FamQuiz</h1>
-        <ul>
-            <li><a href="{{ url_for('index') }}">Home</a></li>
-            <li><a href="{{ url_for('guide') }}">Guide</a></li>
-            <li><a href="{{ url_for('signup') }}">Sign Up</a></li>
-        </ul>
-    </nav>
-
-</body>
-
-</html>
+<nav id="nav">
+    <a href="{{ url_for('homepage') }}" class="nav-brand">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="FamQuiz logo" width="48" height="48"
+            class="nav-logo">
+        <span class="nav-title">FamQuiz</span>
+    </a>
+    <ul id="nav-links">
+        <li><a href="{{ url_for('guide') }}">How to use</a></li>
+        <li><a href="{{ url_for('leaderboard') }}">Leaderboard</a></li>
+        <li><a href="{{ url_for('homepage') }}">Back to home-&gt;</a></li>
+    </ul>
+</nav>
