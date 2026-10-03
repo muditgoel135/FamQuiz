@@ -21,9 +21,13 @@
                 class="auth-form d-flex flex-column" novalidate>
                 {{ register_user_form.hidden_tag() }}
 
-                <div class="auth-field mb-3"> {% set email_ph = "Enter your email address" %} {% set pw_ph = "Enter your password" %} {% set pw2_ph = "Enter your password again" %}
+                <div class="auth-field mb-3">
+                    {% set email_ph = "Enter your email address" %}
+                    {% set pw_ph = "Enter your password" %}
+                    {% set pw2_ph = "Enter your password again" %}
                     <label for="email" class="form-label">Email</label>
-                    {{ register_user_form.email(id="email", class="form-control auth-input", placeholder=email_ph, autocomplete="email") }}
+                    {{ register_user_form.email(id="email", class="form-control auth-input", placeholder=email_ph,
+                    autocomplete="email") }}
                     {% if register_user_form.email.errors %}
                     {% for e in register_user_form.email.errors %}
                     <div class="auth-error">{{ e }}</div>
@@ -33,7 +37,8 @@
 
                 <div class="auth-field mb-3">
                     <label for="password" class="form-label">Password</label>
-                    {{ register_user_form.password(id="password", class="form-control auth-input", placeholder=pw_ph, autocomplete="new-password") }}
+                    {{ register_user_form.password(id="password", class="form-control auth-input", placeholder=pw_ph,
+                    autocomplete="new-password") }}
                     {% if register_user_form.password.errors %}
                     {% for e in register_user_form.password.errors %}
                     <div class="auth-error">{{ e }}</div>
@@ -43,7 +48,8 @@
 
                 <div class="auth-field mb-3">
                     <label for="password_confirm" class="form-label">Confirm Password</label>
-                    {{ register_user_form.password_confirm(id="password_confirm", class="form-control auth-input", placeholder=pw2_ph, autocomplete="new-password") }}
+                    {{ register_user_form.password_confirm(id="password_confirm", class="form-control auth-input",
+                    placeholder=pw2_ph, autocomplete="new-password") }}
                     {% if register_user_form.password_confirm.errors %}
                     {% for e in register_user_form.password_confirm.errors %}
                     <div class="auth-error">{{ e }}</div>
@@ -56,7 +62,7 @@
 
             <div class="auth-links d-flex flex-wrap justify-content-between">
                 <a href="{{ url_for_security('login') }}">Have an account? Log in!</a>
-                <a href="#" title="Password recovery is not enabled">Forgot your password?</a>
+                <a href="{{ url_for_security('forgot_password') }}">Forgot your password?</a>
             </div>
         </div>
     </main>
