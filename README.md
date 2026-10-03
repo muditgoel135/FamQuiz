@@ -25,3 +25,8 @@ Routes: `GET/POST /reset` (forgot), `GET/POST /reset/<token>`,
 `GET/POST /change` (logged in). If `MAIL_SERVER`/`MAIL_PASSWORD` are
 missing, emails are suppressed and a warning is logged instead of crashing.
 `SECRET_KEY` must be set in production or reset tokens invalidate on restart.
+
+Note: `tests/test_live_mail.py` runs with the suite and sends one real
+password-reset email to the verified sender address, then confirms via
+Mailjet's API that it was delivered — so a green suite means the mailing
+system actually works. Keep it; each run costs one email from the free quota.

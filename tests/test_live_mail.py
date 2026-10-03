@@ -1,19 +1,22 @@
 """Live SMTP test — sends a REAL password-reset email to a real user.
 
-Skipped by default so the normal suite never sends real mail or needs
-real creds. Run explicitly with::
-
-    $env:FAMQUIZ_LIVE_MAIL = "1"   # PowerShell
-    pytest tests/test_live_mail.py -q
-
-Uses an isolated temp DB; the only real-world side effect is one email
-to the verified sender address below.
+Runs with the normal suite (no gate): every run proves end-to-end
+delivery through the configured provider. Uses an isolated temp DB;
+the only real-world side effect is one email to the verified sender
+address from .env (recipient = sender). Fails loudly if mail creds
+are missing.
 """
 
-import os
+import base64
+import json
+import time
+import urllib.parse
+import urllib.request
+from datetime import datetime, timezone
 from email.utils import parseaddr
 
-import pytest
+MJ_MESSAGES_URL = "https://api.mailjet.com/v3/REST/message"
+DELIVERED_STATUSES = {"sent", "opened", "clicked"}
 
 
 def _sender_address(flask_app):
@@ -22,13 +25,53 @@ def _sender_address(flask_app):
     assert address and "@" in address, "MAIL_DEFAULT_SENDER not configured"
     return address
 
-needs_live = pytest.mark.skipif(
-    os.getenv("FAMQUIZ_LIVE_MAIL") != "1",
-    reason="Set FAMQUIZ_LIVE_MAIL=1 to send a real test email",
-)
+
+def _mailjet_status(api_key, secret, recipient, sent_after, timeout=120):
+    """Poll Mailjet's Messages API until our message shows up. Returns
+    (ok, detail): ok=True only if Mailjet reports a delivered status."""
+    token = base64.b64encode(f"{api_key}:{secret}".encode()).decode()
+    deadline = time.time() + timeout
+    last_detail = "no messages returned yet"
+    while time.time() < deadline:
+        query = urllib.parse.urlencode(
+            {"To": recipient, "Limit": 5, "Sort": "ID DESC"}
+        )
+        req = urllib.request.Request(
+            f"{MJ_MESSAGES_URL}?{query}",
+            headers={"Authorization": f"Basic {token}"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as resp:
+                messages = json.load(resp).get("Data", [])
+        except Exception as exc:  # network/API blip: keep polling
+            last_detail = f"api error: {exc}"
+            time.sleep(10)
+            continue
+        fresh = [
+            m
+            for m in messages
+            if _arrived_at(m) and _arrived_at(m) >= sent_after
+        ]
+        if fresh:
+            statuses = sorted({m.get("Status") for m in fresh})
+            last_detail = f"statuses={statuses} count={len(fresh)}"
+            if any(m.get("Status") in DELIVERED_STATUSES for m in fresh):
+                return True, last_detail
+        else:
+            last_detail = f"{len(messages)} message(s) found, none newer than send"
+        time.sleep(10)
+    return False, last_detail
 
 
-@needs_live
+def _arrived_at(message):
+    try:
+        return datetime.fromisoformat(
+            message.get("ArrivedAt", "").replace("Z", "+00:00")
+        ).astimezone(timezone.utc)
+    except (ValueError, TypeError):
+        return None
+
+
 def test_forgot_password_sends_real_email_to_user(tmp_path):
     from app import create_app, db, user_datastore
 
@@ -37,13 +80,18 @@ def test_forgot_password_sends_real_email_to_user(tmp_path):
             "TESTING": True,
             "WTF_CSRF_ENABLED": False,
             "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 'live.db'}",
+            # Explicit overrides beat TESTING_CONFIG in create_app, so this
+            # genuinely re-enables sending (Flask-Mail snapshots suppress
+            # at init time; flipping config afterwards would NOT work).
+            "MAIL_SUPPRESS_SEND": False,
         }
     )
-    # create_app suppresses sending when creds are missing; here we want
-    # a REAL send, so re-enable it and fail loudly if creds are absent.
+    # Fail loudly if creds are absent.
     assert flask_app.config.get("MAIL_SERVER"), "MAIL_SERVER not configured"
     assert flask_app.config.get("MAIL_PASSWORD"), "MAIL_PASSWORD not configured"
-    flask_app.config["MAIL_SUPPRESS_SEND"] = False
+    assert (
+        flask_app.extensions["mail"].suppress is False
+    ), "mail extension still suppressing sends"
 
     from flask_security.utils import hash_password
 
@@ -56,5 +104,16 @@ def test_forgot_password_sends_real_email_to_user(tmp_path):
         db.session.commit()
 
     client = flask_app.test_client()
+    sent_after = datetime.now(timezone.utc)
     resp = client.post("/reset", data={"email": recipient})
     assert resp.status_code == 200
+
+    # SMTP acceptance isn't delivery: confirm via Mailjet's API that the
+    # message exists with a delivered status (else it bounced / went spam).
+    ok, detail = _mailjet_status(
+        flask_app.config.get("MAIL_USERNAME"),
+        flask_app.config.get("MAIL_PASSWORD"),
+        recipient,
+        sent_after,
+    )
+    assert ok, f"Mailjet has no delivered message to {recipient}: {detail}"

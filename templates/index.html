@@ -11,8 +11,167 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 
-<body>
+<body class="{{ theme_class }}">
+    <nav id="nav" class="home-nav d-flex flex-wrap justify-content-between align-items-center gap-2">
+        <a href="{{ url_for('homepage') }}" class="nav-brand d-flex align-items-center gap-2 text-decoration-none">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="FamQuiz logo" width="48" height="48"
+                class="nav-logo img-fluid">
+            <span class="nav-title home-serif">FamQuiz</span>
+        </a>
+        <ul id="nav-links" class="d-flex flex-wrap align-items-center mb-0">
+            <li><a href="{{ url_for('guide') }}" class="home-serif">How to use</a></li>
+            <li><a href="{{ url_for('leaderboard') }}" class="home-serif">Leaderboard</a></li>
+            {% if current_user.is_authenticated %}
+            <li><a href="{{ url_for('settings') }}" class="home-serif">Settings</a></li>
+            <li><a href="{{ url_for_security('logout') }}" class="home-serif">Logout</a></li>
+            <li>
+                <a href="{{ url_for('settings') }}" class="home-avatar text-decoration-none"
+                    aria-label="Your profile">{{ avatar_initial }}</a>
+            </li>
+            {% else %}
+            <li><a href="{{ url_for_security('login') }}" class="home-serif">Login</a></li>
+            <li><a href="{{ url_for('settings') }}" class="home-serif">Settings</a></li>
+            {% endif %}
+        </ul>
+    </nav>
 
+    <main class="home-main d-flex flex-column gap-3">
+        <div class="home-top row g-3 mx-0">
+            <section class="col-12 col-lg-6 ps-0 pe-0 pe-lg-2" aria-label="Leaderboard">
+                <div class="home-card h-100">
+                    <h2 class="home-heading home-serif">Leaderboard</h2>
+                    {% if leaderboard %}
+                    <ol class="home-board list-unstyled d-flex flex-column gap-3 mb-0">
+                        {% for entry in leaderboard %}
+                        <li class="home-row d-flex align-items-center gap-3">
+                            <span class="home-rank home-serif">#{{ entry.rank }}</span>
+                            <span class="home-player-avatar" aria-hidden="true">{{ entry.initial }}</span>
+                            <span class="home-player-text d-flex flex-column">
+                                <strong class="home-player-name home-serif">{{ entry.name }}{% if entry.is_you %} (You){% endif %}</strong>
+                                <small class="home-player-status">{{ entry.status }}</small>
+                            </span>
+                            <span class="home-dot home-dot-{{ entry.dot }} ms-auto"
+                                aria-label="{{ entry.status }}"></span>
+                        </li>
+                        {% endfor %}
+                    </ol>
+                    {% else %}
+                    <p class="home-empty mb-0">No players yet &mdash; be the first to play!</p>
+                    {% endif %}
+                </div>
+            </section>
+
+            <section class="col-12 col-lg-6 pe-0 ps-0 ps-lg-2" aria-label="Game options">
+                <div class="home-card h-100">
+                    <h2 class="home-heading home-serif">Game options</h2>
+                    <button type="button" id="home-start" class="home-start home-serif w-100"
+                        data-authenticated="{{ '1' if current_user.is_authenticated else '0' }}">Start game</button>
+                    <div id="home-error" class="home-error" role="alert" hidden></div>
+                    <div class="home-option d-flex flex-wrap align-items-center gap-2">
+                        <label for="home-num" class="home-label home-serif">No. of questions:</label>
+                        <input type="number" id="home-num" name="num_questions" class="home-input"
+                            value="{{ default_num_questions }}" min="1" max="{{ max_questions }}">
+                    </div>
+                    <div class="home-option d-flex flex-wrap align-items-center gap-2">
+                        <span class="home-label home-serif" id="home-powerups-label">Power-ups</span>
+                        <label class="home-switch" aria-labelledby="home-powerups-label">
+                            <input type="checkbox" id="home-powerups" checked>
+                            <span class="home-slider" aria-hidden="true"></span>
+                        </label>
+                    </div>
+                    <div class="home-option d-flex flex-wrap align-items-center gap-2">
+                        <label for="home-difficulty" class="home-label home-serif">Difficulty level:</label>
+                        <select id="home-difficulty" name="difficulty_level" class="home-select">
+                            <option value="" {% if not difficulty_level %}selected{% endif %}>Choose difficulty level
+                            </option>
+                            {% for level in difficulty_options %}
+                            <option value="{{ level }}" {% if difficulty_level==level %}selected{% endif %}>{{
+                                level|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <section class="home-card home-stats" aria-label="Statistics">
+            <h2 class="home-heading home-serif text-center">Statistics</h2>
+            {% if current_user.is_authenticated %}
+            <div class="row g-3 mx-0">
+                <div class="col-12 col-md-4 text-center">
+                    <h3 class="home-sub home-serif">Games played</h3>
+                    <p class="home-stat home-serif mb-1">Total games played in the family: {{ family_games }}</p>
+                    <p class="home-stat home-serif mb-0">Total games played by you: {{ you_games }}</p>
+                </div>
+                <div class="col-12 col-md-4 text-center">
+                    <h3 class="home-sub home-serif">Wins and scoring</h3>
+                    <p class="home-stat home-serif mb-1">No. of wins by you: {{ you_wins }}</p>
+                    <p class="home-stat home-serif mb-0">Best score: {{ "{:,}".format(best_score) }} points</p>
+                </div>
+                <div class="col-12 col-md-4 text-center">
+                    <h3 class="home-sub home-serif">Powerups used</h3>
+                    <p class="home-stat home-serif mb-1">Total no. of powerups used: {{ powerups_used }}</p>
+                    <p class="home-stat home-serif mb-0">Most-used powerup: {{ most_used_powerup }}</p>
+                </div>
+            </div>
+            {% else %}
+            <div class="row g-3 mx-0">
+                <div class="col-12 text-center">
+                    <p class="home-stat home-serif mb-1">Total games played in the family: {{ family_games }}</p>
+                    <p class="home-login-prompt home-serif mb-0"><a
+                            href="{{ url_for_security('login') }}">Log in</a> to track your stats and join the
+                        leaderboard!</p>
+                </div>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer class="home-footer home-serif">Copyright &copy; 2026</footer>
+
+    <script>
+        (function () {
+            var btn = document.getElementById('home-start');
+            var numInput = document.getElementById('home-num');
+            var diffSelect = document.getElementById('home-difficulty');
+            var powerInput = document.getElementById('home-powerups');
+            var errBox = document.getElementById('home-error');
+            if (!btn) return;
+            function showError(msg) {
+                if (!errBox) return;
+                errBox.textContent = msg;
+                errBox.hidden = false;
+            }
+            btn.addEventListener('click', function () {
+                if (errBox) errBox.hidden = true;
+                if (btn.dataset.authenticated !== '1') {
+                    window.location.href = '{{ url_for_security("login") }}?next=' + encodeURIComponent('{{ url_for("gameplay") }}');
+                    return;
+                }
+                var num = parseInt(numInput ? numInput.value : '10', 10) || 10;
+                var difficulty = diffSelect ? diffSelect.value : '';
+                var powerups = powerInput ? !!powerInput.checked : true;
+                btn.disabled = true;
+                fetch('{{ url_for("quiz_generate") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ num_questions: num, difficulty: difficulty, powerups_enabled: powerups })
+                }).then(function (resp) {
+                    if (!resp.ok) {
+                        return resp.json().catch(function () { return {}; }).then(function (body) {
+                            throw new Error(body.error || ('Quiz service failed (' + resp.status + ').'));
+                        });
+                    }
+                    return resp.json();
+                }).then(function () {
+                    window.location.href = '{{ url_for("gameplay") }}';
+                }).catch(function (err) {
+                    showError(err.message || 'Could not start the game.');
+                    btn.disabled = false;
+                });
+            });
+        })();
+    </script>
 </body>
 
 </html>

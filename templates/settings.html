@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FamQuiz - Settings</title>
+    <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body class="{{ theme_class }}">
+    {% include 'nav.html' %}
+
+    <main class="settings-main">
+        <div id="settings-error" class="settings-alert settings-alert-error" role="alert" hidden></div>
+        <div id="settings-ok" class="settings-alert settings-alert-ok" role="status" hidden></div>
+
+        <form id="settings-form" novalidate>
+            <div class="row g-3 mx-0">
+                <!-- Card 1: Profile & Preferences -->
+                <section class="col-12 col-lg-4 ps-0 pe-0 pe-lg-2" aria-label="Profile and preferences">
+                    <div class="home-card settings-card h-100">
+                        <h2 class="home-heading settings-title">Profile &amp; Preferences</h2>
+                        <p class="settings-sub">Update your profile and game preferences.</p>
+                        <hr class="settings-div">
+
+                        <h3 class="settings-h3">Profile</h3>
+                        <div class="settings-grid-2">
+                            <div>
+                                <label class="visually-hidden" for="settings-display">Display Name</label>
+                                <input type="text" id="settings-display" name="display_name" class="settings-input"
+                                    placeholder="Display Name" value="{{ display_name }}" maxlength="80"
+                                    autocomplete="nickname">
+                            </div>
+                            <div>
+                                <label class="visually-hidden" for="settings-nick">Nickname</label>
+                                <input type="text" id="settings-nick" name="nickname" class="settings-input"
+                                    placeholder="Nickname" value="{{ nickname }}" maxlength="80" autocomplete="nickname">
+                            </div>
+                        </div>
+                        <label class="visually-hidden" for="settings-grade-select">Current Grade</label>
+                        <select id="settings-grade-select" name="grade_occupation_select" class="settings-input settings-select">
+                            <option value="" {% if not grade_occupation %}selected{% endif %}>Current Grade (K-12, College, Job)</option>
+                            {% for opt in grade_options %}
+                            <option value="{{ opt }}" {% if grade_occupation==opt %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+                        <label class="visually-hidden" for="settings-status">Status</label>
+                        <select id="settings-status" name="status" class="settings-input settings-select">
+                            {% for opt in status_options %}
+                            <option value="{{ opt }}" {% if status==opt %}selected{% endif %}>{{ opt }}</option>
+                            {% endfor %}
+                        </select>
+
+                        <hr class="settings-div">
+
+                        <h3 class="settings-h3">Notifications &amp; Sounds</h3>
+                        <div class="settings-row">
+                            <span class="settings-label" id="settings-reminders-label">Game reminders</span>
+                            <label class="home-switch" aria-labelledby="settings-reminders-label">
+                                <input type="checkbox" id="settings-reminders" {% if game_reminders %}checked{% endif %}>
+                                <span class="home-slider" aria-hidden="true"></span>
+                            </label>
+                        </div>
+
+                        <hr class="settings-div">
+
+                        <div class="settings-btn-row">
+                            <button type="submit" id="settings-save" class="settings-btn settings-save">Save</button>
+                            <button type="button" id="settings-cancel" class="settings-btn settings-cancel">Cancel</button>
+                        </div>
+                        <div class="auth-links settings-links">
+                            <a href="{{ url_for_security('change_password') }}">Change password</a>
+                            <a href="{{ url_for('homepage') }}">Back to home</a>
+                        </div>
+
+                        <hr class="settings-div">
+
+                        <h3 class="settings-h3">Reset</h3>
+                        <button type="button" id="settings-delete" class="settings-btn settings-danger">Delete</button>
+                    </div>
+                </section>
+
+                <!-- Card 2: Accessibility -->
+                <section class="col-12 col-lg-4 px-0 px-lg-2" aria-label="Accessibility">
+                    <div class="home-card settings-card h-100">
+                        <h2 class="home-heading settings-title">Accessibility</h2>
+                        <p class="settings-sub">Automate quizzes and schedules for your family.</p>
+                        <hr class="settings-div">
+
+                        <h3 class="settings-h3">Theme Mode</h3>
+                        <div class="settings-row">
+                            <span class="settings-label" id="settings-theme-label">Dark mode</span>
+                            <label class="home-switch" aria-labelledby="settings-theme-label">
+                                <input type="checkbox" id="settings-theme" {% if theme_mode=='dark' %}checked{% endif %}>
+                                <span class="home-slider" aria-hidden="true"></span>
+                            </label>
+                        </div>
+
+                        <hr class="settings-div">
+
+                        <h3 class="settings-h3">Language</h3>
+                        <fieldset class="settings-lang">
+                            <legend class="visually-hidden">Language</legend>
+                            {% for opt in language_options %}
+                            <label class="settings-lang-row" for="settings-lang-{{ loop.index }}">
+                                <span class="settings-label">{{ opt }}</span>
+                                <input type="radio" id="settings-lang-{{ loop.index }}" name="language"
+                                    value="{{ opt }}" {% if language==opt %}checked{% endif %}>
+                                <span class="settings-radio" aria-hidden="true"></span>
+                            </label>
+                            {% endfor %}
+                        </fieldset>
+                    </div>
+                </section>
+
+                <!-- Card 3: Subscription / personalisation + data -->
+                <section class="col-12 col-lg-4 ps-0 pe-0 ps-lg-2" aria-label="Subscription">
+                    <div class="home-card settings-card h-100">
+                        <h2 class="home-heading settings-title">Subscription</h2>
+                        <p class="settings-sub">Manage family plan and billing</p>
+                        <hr class="settings-div">
+
+                        <h3 class="settings-h3">Quiz Personalisation</h3>
+                        <div class="settings-subject-row">
+                            <div class="settings-subject-wide">
+                                <label class="visually-hidden" for="settings-subject">Favourite Subject</label>
+                                <input type="text" id="settings-subject" name="favorite_subject" class="settings-input"
+                                    placeholder="Favourite Subject (e.g., Math, Science)" value="{{ favorite_subject }}"
+                                    maxlength="80">
+                            </div>
+                            <div class="settings-subject-narrow">
+                                <label class="visually-hidden" for="settings-grade-text">Current Grade</label>
+                                <input type="text" id="settings-grade-text" name="grade_occupation_text"
+                                    class="settings-input" placeholder="Current Grade" value="{{ grade_occupation }}"
+                                    maxlength="80">
+                            </div>
+                        </div>
+                        <p class="settings-hint">Grade is used to tailor quiz questions in gameplay.</p>
+                        <label class="visually-hidden" for="settings-difficulty">Difficulty Level</label>
+                        <select id="settings-difficulty" name="difficulty_level" class="settings-input settings-select">
+                            {% for opt in difficulty_options %}
+                            <option value="{{ opt }}" {% if difficulty_level==opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                        <label class="visually-hidden" for="settings-num">Questions per game</label>
+                        <input type="number" id="settings-num" name="default_num_questions"
+                            class="settings-input" value="{{ num_questions }}" min="1"
+                            max="{{ max_questions }}" aria-label="Questions per game">
+
+                        <hr class="settings-div">
+
+                        <h3 class="settings-h3">Remove Data</h3>
+                        <button type="button" id="settings-erase" class="settings-btn settings-erase">Erase</button>
+                    </div>
+                </section>
+            </div>
+        </form>
+    </main>
+
+    <footer class="home-footer">Copyright &copy; 2026</footer>
+
+    <script>
+        (function () {
+            var form = document.getElementById('settings-form');
+            var displayInput = document.getElementById('settings-display');
+            var nickInput = document.getElementById('settings-nick');
+            var gradeSelect = document.getElementById('settings-grade-select');
+            var gradeText = document.getElementById('settings-grade-text');
+            var statusSelect = document.getElementById('settings-status');
+            var difficultySelect = document.getElementById('settings-difficulty');
+            var numInput = document.getElementById('settings-num');
+            var subjectInput = document.getElementById('settings-subject');
+            var remindersInput = document.getElementById('settings-reminders');
+            var themeInput = document.getElementById('settings-theme');
+            var errBox = document.getElementById('settings-error');
+            var okBox = document.getElementById('settings-ok');
+            var saveBtn = document.getElementById('settings-save');
+            var cancelBtn = document.getElementById('settings-cancel');
+            var deleteBtn = document.getElementById('settings-delete');
+            var eraseBtn = document.getElementById('settings-erase');
+            if (!form) return;
+
+            var initial = {
+                display_name: displayInput ? displayInput.value : '',
+                nickname: nickInput ? nickInput.value : '',
+                grade: gradeSelect ? gradeSelect.value : '',
+                gradeText: gradeText ? gradeText.value : '',
+                status: statusSelect ? statusSelect.value : '',
+                difficulty: difficultySelect ? difficultySelect.value : '',
+                num: numInput ? numInput.value : '',
+                subject: subjectInput ? subjectInput.value : '',
+                reminders: remindersInput ? !!remindersInput.checked : true,
+                dark: themeInput ? !!themeInput.checked : false,
+                language: (form.querySelector('input[name="language"]:checked') || {}).value || 'English'
+            };
+
+            function showError(msg) {
+                if (okBox) okBox.hidden = true;
+                if (!errBox) return;
+                errBox.textContent = msg;
+                errBox.hidden = false;
+            }
+            function showOk(msg) {
+                if (errBox) errBox.hidden = true;
+                if (!okBox) return;
+                okBox.textContent = msg;
+                okBox.hidden = false;
+            }
+            function checkedLanguage() {
+                var el = form.querySelector('input[name="language"]:checked');
+                return el ? el.value : 'English';
+            }
+            // Keep the two grade controls in sync (select is canonical).
+            if (gradeSelect && gradeText) {
+                gradeSelect.addEventListener('change', function () {
+                    gradeText.value = gradeSelect.value;
+                });
+                gradeText.addEventListener('input', function () {
+                    var match = Array.prototype.some.call(gradeSelect.options, function (o) {
+                        return o.value === gradeText.value;
+                    });
+                    if (match) gradeSelect.value = gradeText.value;
+                });
+            }
+
+            form.addEventListener('submit', function (ev) {
+                ev.preventDefault();
+                if (errBox) errBox.hidden = true;
+                if (okBox) okBox.hidden = true;
+                var grade = gradeSelect ? gradeSelect.value : '';
+                if (!grade && gradeText) grade = gradeText.value.trim();
+                var payload = {
+                    display_name: displayInput ? displayInput.value : '',
+                    nickname: nickInput ? nickInput.value : '',
+                    grade_occupation: grade,
+                    favorite_subject: subjectInput ? subjectInput.value : '',
+                    language: checkedLanguage(),
+                    theme_mode: (themeInput && themeInput.checked) ? 'dark' : 'light',
+                    game_reminders: !!(remindersInput && remindersInput.checked),
+                    difficulty_level: difficultySelect ? difficultySelect.value : '',
+                    status: statusSelect ? statusSelect.value : ''
+                };
+                if (numInput && numInput.value !== '') {
+                    payload.default_num_questions = parseInt(numInput.value, 10);
+                }
+                if (saveBtn) saveBtn.disabled = true;
+                fetch('{{ url_for("settings_save") }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                }).then(function (resp) {
+                    return resp.json().catch(function () { return {}; }).then(function (body) {
+                        if (!resp.ok) throw new Error(body.error || ('Save failed (' + resp.status + ').'));
+                        return body;
+                    });
+                }).then(function () {
+                    showOk('Settings saved.');
+                    if (gradeSelect) gradeSelect.value = payload.grade_occupation || '';
+                    if (gradeText) gradeText.value = payload.grade_occupation || '';
+                }).catch(function (err) {
+                    showError(err.message || 'Could not save settings.');
+                }).then(function () {
+                    if (saveBtn) saveBtn.disabled = false;
+                });
+            });
+
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', function () {
+                    if (displayInput) displayInput.value = initial.display_name;
+                    if (nickInput) nickInput.value = initial.nickname;
+                    if (gradeSelect) gradeSelect.value = initial.grade;
+                    if (gradeText) gradeText.value = initial.gradeText || initial.grade;
+                    if (statusSelect) statusSelect.value = initial.status;
+                    if (difficultySelect) difficultySelect.value = initial.difficulty;
+                    if (numInput) numInput.value = initial.num;
+                    if (subjectInput) subjectInput.value = initial.subject;
+                    if (remindersInput) remindersInput.checked = initial.reminders;
+                    if (themeInput) themeInput.checked = initial.dark;
+                    var radio = form.querySelector('input[name="language"][value="' + initial.language + '"]');
+                    if (radio) radio.checked = true;
+                    if (errBox) errBox.hidden = true;
+                    if (okBox) okBox.hidden = true;
+                });
+            }
+
+            if (deleteBtn) {
+                deleteBtn.addEventListener('click', function () {
+                    if (!confirm('Delete your account permanently? This cannot be undone.')) return;
+                    deleteBtn.disabled = true;
+                    fetch('{{ url_for("account_delete") }}', { method: 'DELETE' })
+                        .then(function (resp) {
+                            if (!resp.ok) throw new Error('Delete failed (' + resp.status + ').');
+                            window.location.href = '{{ url_for("homepage") }}';
+                        })
+                        .catch(function (err) {
+                            showError(err.message || 'Could not delete account.');
+                            deleteBtn.disabled = false;
+                        });
+                });
+            }
+
+            if (eraseBtn) {
+                eraseBtn.addEventListener('click', function () {
+                    if (!confirm('Erase your game data (scores, wins, power-ups)? Your account stays.')) return;
+                    eraseBtn.disabled = true;
+                    fetch('{{ url_for("account_erase_data") }}', { method: 'POST' })
+                        .then(function (resp) {
+                            if (!resp.ok) throw new Error('Erase failed (' + resp.status + ').');
+                            showOk('Game data erased.');
+                        })
+                        .catch(function (err) {
+                            showError(err.message || 'Could not erase data.');
+                        })
+                        .then(function () {
+                            eraseBtn.disabled = false;
+                        });
+                });
+            }
+        })();
+    </script>
+</body>
+
+</html>
