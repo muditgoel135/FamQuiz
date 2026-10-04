@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ html_lang }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FamQuiz - Leaderboard</title>
+    <title>FamQuiz - {{ _('Leaderboard') }}</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
@@ -16,22 +16,22 @@
 
     <main class="board-wrap d-flex flex-column">
         {% if leaderboard %}
-        <ol class="board-list list-unstyled d-flex flex-column mb-0" aria-label="Leaderboard">
+        <ol class="board-list list-unstyled d-flex flex-column mb-0" aria-label="{{ _('Leaderboard') }}">
             {% for entry in leaderboard %}
             <li class="home-row d-flex align-items-center gap-3">
                 <span class="home-rank">#{{ entry.rank }}</span>
                 <span class="home-player-avatar" aria-hidden="true">{{ entry.initial }}</span>
                 <span class="home-player-text d-flex flex-column">
-                    <strong class="home-player-name">{{ entry.name }}{% if entry.is_you %} (You){% endif %}</strong>
-                    <small class="home-player-status">{{ entry.status }}</small>
+                    <strong class="home-player-name">{{ entry.name }}{% if entry.is_you %} {{ _('(You)') }}{% endif %}</strong>
+                    <small class="home-player-status">{{ _(entry.status) if entry.status in ['Ready to play', 'Do not disturb', 'offline'] else entry.status }}</small>
                 </span>
-                <span class="board-score ms-auto">{{ "{:,}".format(entry.best_score) }} pts</span>
+                <span class="board-score ms-auto">{{ "{:,}".format(entry.best_score) }} {{ _('pts') }}</span>
                 <span class="home-dot home-dot-{{ entry.dot }}" aria-label="{{ entry.status }}"></span>
             </li>
             {% endfor %}
         </ol>
         {% else %}
-        <p class="home-empty mb-0 text-center">No players yet &mdash; be the first to play!</p>
+        <p class="home-empty mb-0 text-center">{{ _('No players yet — be the first to play!') }}</p>
         {% endif %}
     </main>
 

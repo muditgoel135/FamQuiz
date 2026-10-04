@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ html_lang }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FamQuiz</title>
+    <title>FamQuiz - {{ _('Guide') }}</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
@@ -13,6 +13,26 @@
 
 <body class="{{ theme_class }}">
     {% include 'nav.html' %}
+    <main class="board-wrap d-flex flex-column gap-3">
+        <section class="home-card" aria-label="{{ _('Getting started') }}">
+            <h2 class="home-heading">{{ _('Getting started') }}</h2>
+            <ol class="mb-0">
+                <li>{{ _('Sign up or log in.') }}</li>
+                <li>{{ _('Choose game options then Start game.') }}</li>
+                <li>{{ _('Answer questions fast — faster correct answers score more.') }}</li>
+                <li>{{ _('Top score wins the family game.') }}</li>
+            </ol>
+        </section>
+        <section class="home-card" aria-label="{{ _('Changing your settings') }}">
+            <h2 class="home-heading">{{ _('Changing your settings') }}</h2>
+            <ol class="mb-0">
+                <li>{{ _('Open Settings from the homepage.') }}</li>
+                <li>{{ _('Update profile, theme, and language.') }}</li>
+                <li>{{ _('Save — quiz questions use your language.') }}</li>
+            </ol>
+        </section>
+    </main>
+    <footer class="home-footer">Copyright &copy; 2026</footer>
 </body>
 
 </html>

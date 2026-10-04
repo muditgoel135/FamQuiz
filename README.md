@@ -26,6 +26,24 @@ Routes: `GET/POST /reset` (forgot), `GET/POST /reset/<token>`,
 missing, emails are suppressed and a warning is logged instead of crashing.
 `SECRET_KEY` must be set in production or reset tokens invalidate on restart.
 
+## Languages (Client 1: English, Spanish, Hindi, Mandarin Simplified)
+
+Full UI including quiz. No extra dependency — `translations.py` holds the
+`es`/`hi`/`zh_Hans` dictionaries (zero-dependency equivalent of the
+Flask-User/Flask-Security-Too + Flask-Babel internationalisation in the
+E-portfolio). `User.language` stores the full name; `get_locale()` in
+`app.py` resolves `?lang=` > session > user > `Accept-Language` > `en`.
+
+* Switch in Settings (persists + applies immediately via session) or
+  `/?lang=es`, `/?lang=hi`, `/?lang=zh_Hans` for anonymous preview.
+* Quiz questions use the same language (`build_quiz_messages()`), with an
+  explicit `Use Simplified Chinese.` clause for Mandarin.
+* JS strings come from `window.I18N` (injected per-page) and
+  `GET /api/i18n/<locale>.json`.
+* Add a string: add the English source to all three dicts in
+  `translations.py` and use `{{ _('...') }}` in templates. Run
+  `pytest tests/test_i18n.py -q` to verify.
+
 Note: `tests/test_live_mail.py` runs with the suite and sends one real
 password-reset email to the verified sender address, then confirms via
 Mailjet's API that it was delivered — so a green suite means the mailing

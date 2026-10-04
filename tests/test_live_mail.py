@@ -33,9 +33,7 @@ def _mailjet_status(api_key, secret, recipient, sent_after, timeout=120):
     deadline = time.time() + timeout
     last_detail = "no messages returned yet"
     while time.time() < deadline:
-        query = urllib.parse.urlencode(
-            {"To": recipient, "Limit": 5, "Sort": "ID DESC"}
-        )
+        query = urllib.parse.urlencode({"To": recipient, "Limit": 5, "Sort": "ID DESC"})
         req = urllib.request.Request(
             f"{MJ_MESSAGES_URL}?{query}",
             headers={"Authorization": f"Basic {token}"},
@@ -47,11 +45,7 @@ def _mailjet_status(api_key, secret, recipient, sent_after, timeout=120):
             last_detail = f"api error: {exc}"
             time.sleep(10)
             continue
-        fresh = [
-            m
-            for m in messages
-            if _arrived_at(m) and _arrived_at(m) >= sent_after
-        ]
+        fresh = [m for m in messages if _arrived_at(m) and _arrived_at(m) >= sent_after]
         if fresh:
             statuses = sorted({m.get("Status") for m in fresh})
             last_detail = f"statuses={statuses} count={len(fresh)}"

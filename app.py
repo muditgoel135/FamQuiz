@@ -2,9 +2,10 @@ import json
 import os
 import random
 import time
+from typing import Any
 from uuid import uuid4
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, g, jsonify, render_template, request, session
 from flask_mail import Mail
 from flask_security import (
     RoleMixin,
@@ -15,6 +16,15 @@ from flask_security import (
     login_required,
 )
 from flask_sqlalchemy import SQLAlchemy
+
+from translations import (
+    LOCALE_TO_HTML,
+    LOCALE_TO_LANGUAGE,
+    SUPPORTED_LOCALES,
+    TRANSLATIONS,
+    LANGUAGE_TO_LOCALE,
+    translate,
+)
 
 load_dotenv()
 
@@ -108,6 +118,55 @@ TESTING_CONFIG = {
     "MAIL_SUPPRESS_SEND": True,
 }
 
+# Client 1 (E-portfolio): 4 UI languages. DB stores full names,
+# locale codes drive template translation (zero-dependency,
+# Flask-Security-Too/Flask-User internationalisation equivalent).
+LOCALE_CODES = SUPPORTED_LOCALES
+
+
+def get_locale():
+    """Resolve current locale: ?lang= > session > user > Accept-Language > en."""
+    try:
+        from flask import has_request_context
+
+        if not has_request_context():
+            return "en"
+        # Explicit override wins and persists for anonymous users.
+        arg = request.args.get("lang")
+        if arg in SUPPORTED_LOCALES:
+            session["locale"] = arg
+            return arg
+        sess = session.get("locale")
+        if sess in SUPPORTED_LOCALES:
+            return sess  # type: ignore[return-value]
+        try:
+            if current_user.is_authenticated:
+                mapped = LANGUAGE_TO_LOCALE.get(
+                    (current_user.language or "English").strip(), "en"
+                )
+                if mapped in SUPPORTED_LOCALES:
+                    return mapped
+        except Exception:
+            pass
+        best = request.accept_languages.best_match(["en", "es", "hi", "zh-Hans", "zh"])
+        if best:
+            if best in ("zh-Hans", "zh"):
+                return "zh_Hans"
+            if best in SUPPORTED_LOCALES:
+                return best
+    except Exception:
+        pass
+    return "en"
+
+
+def _(message):
+    """Translate a UI string into the current locale (fallback: English)."""
+    try:
+        return translate(message, get_locale())
+    except Exception:
+        return message
+
+
 db = SQLAlchemy()
 mail = Mail()
 
@@ -192,7 +251,7 @@ def rank_of(user_id):
     ordered_ids = [
         u.id
         for u in User.query.order_by(
-            User.best_score.desc(), User.total_wins.desc(), User.id.asc()
+            User.best_score.desc(), User.total_wins.desc(), User.id.asc()  # type: ignore[attr-defined]
         ).all()
     ]
     return ordered_ids.index(user_id) + 1 if user_id in ordered_ids else 1
@@ -262,7 +321,7 @@ def create_app(config_overrides=None):
 
         top_users = (
             User.query.order_by(
-                User.best_score.desc(), User.total_wins.desc(), User.id.asc()
+                User.best_score.desc(), User.total_wins.desc(), User.id.asc()  # type: ignore[attr-defined]
             )
             .limit(3)
             .all()
@@ -340,6 +399,39 @@ def create_app(config_overrides=None):
             dark = False
         return {"theme_class": "theme-dark" if dark else ""}
 
+    @app.context_processor
+    def inject_i18n():
+        locale = get_locale()
+        return {
+            "_": _,
+            "current_locale": locale,
+            "html_lang": LOCALE_TO_HTML.get(locale, "en"),
+            "supported_locales": list(SUPPORTED_LOCALES),
+            "locale_to_language": dict(LOCALE_TO_LANGUAGE),
+        }
+
+    @app.before_request
+    def _persist_lang_param():
+        try:
+            arg = request.args.get("lang")
+            if arg in SUPPORTED_LOCALES:
+                session["locale"] = arg
+        except Exception:
+            pass
+
+    @app.route("/api/i18n/<locale>.json")
+    def i18n_dict(locale):
+        """Translated UI strings for JavaScript (Full UI plan)."""
+        if locale not in SUPPORTED_LOCALES:
+            return jsonify({"error": "Unsupported language."}), 404
+        return jsonify(
+            {
+                "locale": locale,
+                "html_lang": LOCALE_TO_HTML.get(locale, "en"),
+                "strings": TRANSLATIONS.get(locale, {}),
+            }
+        )
+
     @app.route("/settings")
     @login_required
     def settings():
@@ -413,9 +505,7 @@ def create_app(config_overrides=None):
 
         language = payload.get("language", current_user.language or "English")
         if language not in SETTINGS_LANGUAGES:
-            errors["language"] = (
-                f"must be one of: {', '.join(SETTINGS_LANGUAGES)}"
-            )
+            errors["language"] = f"must be one of: {', '.join(SETTINGS_LANGUAGES)}"
 
         theme_mode = payload.get("theme_mode", current_user.theme_mode or "light")
         if theme_mode not in SETTINGS_THEMES:
@@ -442,7 +532,7 @@ def create_app(config_overrides=None):
 
         if "default_num_questions" in payload:
             try:
-                num_questions = int(payload.get("default_num_questions"))
+                num_questions = int(payload.get("default_num_questions"))  # type: ignore[arg-type] -- None/str handled by except below
             except (TypeError, ValueError):
                 errors["default_num_questions"] = "must be a whole number"
                 num_questions = None
@@ -459,9 +549,7 @@ def create_app(config_overrides=None):
 
         status = payload.get("status", current_user.status or "Ready to play")
         if not isinstance(status, str) or status not in SETTINGS_STATUSES:
-            errors["status"] = (
-                f"must be one of: {', '.join(SETTINGS_STATUSES)}"
-            )
+            errors["status"] = f"must be one of: {', '.join(SETTINGS_STATUSES)}"
 
         if errors:
             return jsonify({"error": "Invalid settings.", "fields": errors}), 400
@@ -477,6 +565,11 @@ def create_app(config_overrides=None):
         current_user.default_num_questions = num_questions
         current_user.status = status
         db.session.commit()
+        # Full UI plan: apply new UI language immediately.
+        try:
+            session["locale"] = LANGUAGE_TO_LOCALE.get(language, "en")
+        except Exception:
+            pass
         return jsonify(
             {
                 "ok": True,
@@ -545,7 +638,7 @@ def create_app(config_overrides=None):
             return "offline"
 
         users = User.query.order_by(
-            User.best_score.desc(), User.total_wins.desc(), User.id.asc()
+            User.best_score.desc(), User.total_wins.desc(), User.id.asc()  # type: ignore[attr-defined]
         ).all()
         current_id = current_user.id if current_user.is_authenticated else None
         board = []
@@ -590,7 +683,7 @@ def create_app(config_overrides=None):
         Answers stay server-side in the Flask session; the response only
         contains questions and options.
         """
-        
+
         payload = request.get_json(silent=True) or {}
         try:
             num = int(
@@ -599,7 +692,9 @@ def create_app(config_overrides=None):
         except (TypeError, ValueError):
             num = 10
         num = max(1, min(num, MAX_QUIZ_QUESTIONS))
-        difficulty = payload.get("difficulty") or current_user.difficulty_level or "medium"
+        difficulty = (
+            payload.get("difficulty") or current_user.difficulty_level or "medium"
+        )
         if not isinstance(difficulty, str):
             difficulty = "medium"
         difficulty = difficulty.strip().lower()
@@ -688,9 +783,7 @@ def create_app(config_overrides=None):
         correct = option == current["answer_index"]
         points = 0
         if correct:
-            points = BASE_POINTS + round(
-                SPEED_BONUS_POINTS * (1 - elapsed / limit)
-            )
+            points = BASE_POINTS + round(SPEED_BONUS_POINTS * (1 - elapsed / limit))
             if quiz.get("double_armed"):
                 points *= 2
         quiz["score"] = quiz.get("score", 0) + points
@@ -741,7 +834,7 @@ def create_app(config_overrides=None):
         counts[kind] = counts.get(kind, 0) + 1
         quiz["powerup_counts"] = counts
         quiz["powerup_used"] = True
-        data = {"kind": kind}
+        data: dict[str, Any] = {"kind": kind}
         if kind == "double":
             quiz["double_armed"] = True
         elif kind == "fifty":
@@ -899,6 +992,12 @@ def build_quiz_messages(user, num_questions, difficulty=None):
         difficulty = "medium"
     language = user.language or "English"
     grade = user.grade_occupation or "all ages"
+    # Finalised plan: Mandarin Chinese means Simplified (zh_Hans).
+    extra = (
+        " Use Simplified Chinese."
+        if language.strip().lower() in ("mandarin chinese", "chinese", "zh_hans")
+        else ""
+    )
     return [
         {
             "role": "system",
@@ -913,7 +1012,7 @@ def build_quiz_messages(user, num_questions, difficulty=None):
             "content": (
                 f"Write {num_questions} multiple-choice quiz questions about "
                 f"{subject} at {difficulty} difficulty, suitable for {grade}. "
-                f"Write everything in {language}."
+                f"Write everything in {language}.{extra}"
             ),
         },
     ]
@@ -960,7 +1059,16 @@ def parse_quiz_content(content):
         raise QuizGenerationError(
             "Quiz service returned an unreadable response."
         ) from exc
-    raw = data.get("questions") if isinstance(data, dict) else None
+    if isinstance(data, dict):
+        raw = data.get("questions")
+        if raw is None and isinstance(data.get("question"), str):
+            # Some models return one bare question object despite the schema.
+            raw = [data]
+    elif isinstance(data, list):
+        # Some models return a bare array despite the schema.
+        raw = data
+    else:
+        raw = None
     if not isinstance(raw, list):
         raise QuizGenerationError("Quiz service returned an unreadable response.")
     questions = []
@@ -1041,4 +1149,4 @@ def generate_questions(user, num_questions, difficulty=None):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))

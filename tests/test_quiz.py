@@ -100,22 +100,16 @@ class TestQuizGenerate:
         for token in ("Space", "easy", "Hindi", "Grade 5"):
             assert token in prompt
 
-    def test_num_questions_is_clamped(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_num_questions_is_clamped(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         fake = _FakeClient(_quiz_json(MAX_QUIZ_QUESTIONS))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        resp = client.post(
-            "/api/quiz/generate", json={"num_questions": 999}
-        )
+        resp = client.post("/api/quiz/generate", json={"num_questions": 999})
         assert resp.status_code == 200
         assert resp.get_json()["total"] <= MAX_QUIZ_QUESTIONS
 
-    def test_bad_model_output_returns_502(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_bad_model_output_returns_502(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         fake = _FakeClient("not json at all {{{")
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
@@ -123,9 +117,7 @@ class TestQuizGenerate:
         resp = client.post("/api/quiz/generate", json={"num_questions": 2})
         assert resp.status_code == 502
 
-    def test_model_failure_returns_502(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_model_failure_returns_502(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
 
         class _Boom:
@@ -149,6 +141,29 @@ class TestParseQuizContent:
         questions = app_module.parse_quiz_content(content)
         assert len(questions) == 1
         assert questions[0]["answer_index"] == 1
+
+    def test_tolerates_top_level_array(self):
+        # Shape really returned by gemma4:31b on Ollama cloud.
+        content = (
+            '```json\n[{"question": "Which planet is known as the '
+            '\'Red Planet\'?", "options": ["Venus", "Mars", '
+            '"Jupiter", "Saturn"], "answer": "Mars", "difficulty": '
+            '"easy"}]\n```'
+        )
+        questions = app_module.parse_quiz_content(content)
+        assert len(questions) == 1
+        assert questions[0]["answer_index"] == 1
+
+    def test_tolerates_bare_single_object(self):
+        # Shape really returned by nemotron-3-ultra on Ollama cloud.
+        content = (
+            '{"question": "Which planet is known as the Red Planet?", '
+            '"options": ["Mars", "Venus", "Jupiter", "Saturn"], '
+            '"answer": "Mars"}'
+        )
+        questions = app_module.parse_quiz_content(content)
+        assert len(questions) == 1
+        assert questions[0]["answer_index"] == 0
 
     def test_rejects_unmatched_text_answer(self):
         content = json.dumps(
@@ -294,9 +309,7 @@ class TestQuizState:
         body = client.get("/api/quiz/state").get_json()
         assert body["powerup"] == "fifty"
 
-    def test_powerups_disabled_offers_nothing(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_powerups_disabled_offers_nothing(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1, powerups_enabled=False)
         body = client.get("/api/quiz/state").get_json()
@@ -314,9 +327,7 @@ class TestQuizAnswer:
         )
         assert resp.status_code == 404
 
-    def test_correct_fast_answer_earns_bonus(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_correct_fast_answer_earns_bonus(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=2)
         client.get("/api/quiz/state")
@@ -344,9 +355,7 @@ class TestQuizAnswer:
         assert body["correct"] is True
         assert body["points_awarded"] == 1000
 
-    def test_wrong_answer_scores_zero(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_wrong_answer_scores_zero(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -360,9 +369,7 @@ class TestQuizAnswer:
         assert body["quiz_score"] == 0
         assert body["finished"] is True
 
-    def test_fast_beats_slow_in_one_quiz(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_fast_beats_slow_in_one_quiz(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=2)
         client.get("/api/quiz/state")
@@ -403,9 +410,7 @@ class TestQuizAnswer:
             )
             assert resp.status_code == 409
 
-    def test_answering_finished_quiz_rejected(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_answering_finished_quiz_rejected(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -421,9 +426,7 @@ class TestQuizPowerup:
     def test_requires_login(self, client):
         assert client.post("/api/quiz/powerup", json={}).status_code == 401
 
-    def test_unoffered_or_disabled_rejected(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_unoffered_or_disabled_rejected(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1, powerups_enabled=False)
         client.get("/api/quiz/state")
@@ -435,30 +438,24 @@ class TestQuizPowerup:
         client.get("/api/quiz/state")
         # Nothing offered -> any kind rejected; wrong kind rejected.
         assert (
-            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code
-            == 409
+            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 409
         )
         _force_powerup(client, "fifty")
         assert (
-            client.post("/api/quiz/powerup", json={"kind": "hint"}).status_code
-            == 409
+            client.post("/api/quiz/powerup", json={"kind": "hint"}).status_code == 409
         )
 
-    def test_double_doubles_fast_points(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_double_doubles_fast_points(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
         _force_powerup(client, "double")
         assert (
-            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code
-            == 200
+            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 200
         )
         # Reuse on the same question is rejected.
         assert (
-            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code
-            == 409
+            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 409
         )
         _set_started_ago(client, 2)
         body = client.post(
@@ -466,9 +463,7 @@ class TestQuizPowerup:
         ).get_json()
         assert 2800 <= body["points_awarded"] <= 3000
 
-    def test_fifty_removes_two_wrong_options(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_fifty_removes_two_wrong_options(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -478,9 +473,7 @@ class TestQuizPowerup:
         assert len(body["removed"]) == 2
         assert 0 not in body["removed"]  # 0 is correct for Q0
 
-    def test_calc_extends_time_cap(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_calc_extends_time_cap(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -494,9 +487,7 @@ class TestQuizPowerup:
         # 40s of 45s still earns a small bonus instead of base points.
         assert body["points_awarded"] > 1000
 
-    def test_hint_reveals_first_letter(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_hint_reveals_first_letter(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -592,9 +583,7 @@ class TestQuizFinish:
             me = User.query.filter_by(email=existing_user["email"]).one()
             assert me.total_games_played == 1
 
-    def test_powerups_counted_at_finish(
-        self, client, app, existing_user, monkeypatch
-    ):
+    def test_powerups_counted_at_finish(self, client, app, existing_user, monkeypatch):
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")

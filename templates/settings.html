@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ html_lang }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FamQuiz - Settings</title>
+    <title>FamQuiz - {{ _('Settings') }}</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
@@ -21,45 +21,45 @@
         <form id="settings-form" novalidate>
             <div class="row g-3 mx-0">
                 <!-- Card 1: Profile & Preferences -->
-                <section class="col-12 col-lg-4 ps-0 pe-0 pe-lg-2" aria-label="Profile and preferences">
+                <section class="col-12 col-lg-4 ps-0 pe-0 pe-lg-2" aria-label="{{ _('Profile & Preferences') }}">
                     <div class="home-card settings-card h-100">
-                        <h2 class="home-heading settings-title">Profile &amp; Preferences</h2>
-                        <p class="settings-sub">Update your profile and game preferences.</p>
+                        <h2 class="home-heading settings-title">{{ _('Profile & Preferences') }}</h2>
+                        <p class="settings-sub">{{ _('Update your profile and game preferences.') }}</p>
                         <hr class="settings-div">
 
-                        <h3 class="settings-h3">Profile</h3>
+                        <h3 class="settings-h3">{{ _('Profile') }}</h3>
                         <div class="settings-grid-2">
                             <div>
-                                <label class="visually-hidden" for="settings-display">Display Name</label>
+                                <label class="visually-hidden" for="settings-display">{{ _('Display Name') }}</label>
                                 <input type="text" id="settings-display" name="display_name" class="settings-input"
-                                    placeholder="Display Name" value="{{ display_name }}" maxlength="80"
+                                    placeholder="{{ _('Display Name') }}" value="{{ display_name }}" maxlength="80"
                                     autocomplete="nickname">
                             </div>
                             <div>
-                                <label class="visually-hidden" for="settings-nick">Nickname</label>
+                                <label class="visually-hidden" for="settings-nick">{{ _('Nickname') }}</label>
                                 <input type="text" id="settings-nick" name="nickname" class="settings-input"
-                                    placeholder="Nickname" value="{{ nickname }}" maxlength="80" autocomplete="nickname">
+                                    placeholder="{{ _('Nickname') }}" value="{{ nickname }}" maxlength="80" autocomplete="nickname">
                             </div>
                         </div>
-                        <label class="visually-hidden" for="settings-grade-select">Current Grade</label>
+                        <label class="visually-hidden" for="settings-grade-select">{{ _('Current Grade') }}</label>
                         <select id="settings-grade-select" name="grade_occupation_select" class="settings-input settings-select">
-                            <option value="" {% if not grade_occupation %}selected{% endif %}>Current Grade (K-12, College, Job)</option>
+                            <option value="" {% if not grade_occupation %}selected{% endif %}>{{ _('Current Grade (K-12, College, Job)') }}</option>
                             {% for opt in grade_options %}
                             <option value="{{ opt }}" {% if grade_occupation==opt %}selected{% endif %}>{{ opt }}</option>
                             {% endfor %}
                         </select>
-                        <label class="visually-hidden" for="settings-status">Status</label>
+                        <label class="visually-hidden" for="settings-status">{{ _('Status') }}</label>
                         <select id="settings-status" name="status" class="settings-input settings-select">
                             {% for opt in status_options %}
-                            <option value="{{ opt }}" {% if status==opt %}selected{% endif %}>{{ opt }}</option>
+                            <option value="{{ opt }}" {% if status==opt %}selected{% endif %}>{{ _(opt) }}</option>
                             {% endfor %}
                         </select>
 
                         <hr class="settings-div">
 
-                        <h3 class="settings-h3">Notifications &amp; Sounds</h3>
+                        <h3 class="settings-h3">{{ _('Notifications & Sounds') }}</h3>
                         <div class="settings-row">
-                            <span class="settings-label" id="settings-reminders-label">Game reminders</span>
+                            <span class="settings-label" id="settings-reminders-label">{{ _('Game reminders') }}</span>
                             <label class="home-switch" aria-labelledby="settings-reminders-label">
                                 <input type="checkbox" id="settings-reminders" {% if game_reminders %}checked{% endif %}>
                                 <span class="home-slider" aria-hidden="true"></span>
@@ -69,31 +69,31 @@
                         <hr class="settings-div">
 
                         <div class="settings-btn-row">
-                            <button type="submit" id="settings-save" class="settings-btn settings-save">Save</button>
-                            <button type="button" id="settings-cancel" class="settings-btn settings-cancel">Cancel</button>
+                            <button type="submit" id="settings-save" class="settings-btn settings-save">{{ _('Save') }}</button>
+                            <button type="button" id="settings-cancel" class="settings-btn settings-cancel">{{ _('Cancel') }}</button>
                         </div>
                         <div class="auth-links settings-links">
-                            <a href="{{ url_for_security('change_password') }}">Change password</a>
-                            <a href="{{ url_for('homepage') }}">Back to home</a>
+                            <a href="{{ url_for_security('change_password') }}">{{ _('Change password') }}</a>
+                            <a href="{{ url_for('homepage') }}">{{ _('Back to home') }}</a>
                         </div>
 
                         <hr class="settings-div">
 
-                        <h3 class="settings-h3">Reset</h3>
-                        <button type="button" id="settings-delete" class="settings-btn settings-danger">Delete</button>
+                        <h3 class="settings-h3">{{ _('Reset') }}</h3>
+                        <button type="button" id="settings-delete" class="settings-btn settings-danger">{{ _('Delete') }}</button>
                     </div>
                 </section>
 
                 <!-- Card 2: Accessibility -->
-                <section class="col-12 col-lg-4 px-0 px-lg-2" aria-label="Accessibility">
+                <section class="col-12 col-lg-4 px-0 px-lg-2" aria-label="{{ _('Accessibility') }}">
                     <div class="home-card settings-card h-100">
-                        <h2 class="home-heading settings-title">Accessibility</h2>
-                        <p class="settings-sub">Automate quizzes and schedules for your family.</p>
+                        <h2 class="home-heading settings-title">{{ _('Accessibility') }}</h2>
+                        <p class="settings-sub">{{ _('Automate quizzes and schedules for your family.') }}</p>
                         <hr class="settings-div">
 
-                        <h3 class="settings-h3">Theme Mode</h3>
+                        <h3 class="settings-h3">{{ _('Theme Mode') }}</h3>
                         <div class="settings-row">
-                            <span class="settings-label" id="settings-theme-label">Dark mode</span>
+                            <span class="settings-label" id="settings-theme-label">{{ _('Dark mode') }}</span>
                             <label class="home-switch" aria-labelledby="settings-theme-label">
                                 <input type="checkbox" id="settings-theme" {% if theme_mode=='dark' %}checked{% endif %}>
                                 <span class="home-slider" aria-hidden="true"></span>
@@ -102,9 +102,9 @@
 
                         <hr class="settings-div">
 
-                        <h3 class="settings-h3">Language</h3>
+                        <h3 class="settings-h3">{{ _('Language') }}</h3>
                         <fieldset class="settings-lang">
-                            <legend class="visually-hidden">Language</legend>
+                            <legend class="visually-hidden">{{ _('Language') }}</legend>
                             {% for opt in language_options %}
                             <label class="settings-lang-row" for="settings-lang-{{ loop.index }}">
                                 <span class="settings-label">{{ opt }}</span>
@@ -118,43 +118,43 @@
                 </section>
 
                 <!-- Card 3: Subscription / personalisation + data -->
-                <section class="col-12 col-lg-4 ps-0 pe-0 ps-lg-2" aria-label="Subscription">
+                <section class="col-12 col-lg-4 ps-0 pe-0 ps-lg-2" aria-label="{{ _('Subscription') }}">
                     <div class="home-card settings-card h-100">
-                        <h2 class="home-heading settings-title">Subscription</h2>
-                        <p class="settings-sub">Manage family plan and billing</p>
+                        <h2 class="home-heading settings-title">{{ _('Subscription') }}</h2>
+                        <p class="settings-sub">{{ _('Manage family plan and billing') }}</p>
                         <hr class="settings-div">
 
-                        <h3 class="settings-h3">Quiz Personalisation</h3>
+                        <h3 class="settings-h3">{{ _('Quiz Personalisation') }}</h3>
                         <div class="settings-subject-row">
                             <div class="settings-subject-wide">
-                                <label class="visually-hidden" for="settings-subject">Favourite Subject</label>
+                                <label class="visually-hidden" for="settings-subject">{{ _('Favourite Subject') }}</label>
                                 <input type="text" id="settings-subject" name="favorite_subject" class="settings-input"
-                                    placeholder="Favourite Subject (e.g., Math, Science)" value="{{ favorite_subject }}"
+                                    placeholder="{{ _('Favourite Subject (e.g., Math, Science)') }}" value="{{ favorite_subject }}"
                                     maxlength="80">
                             </div>
                             <div class="settings-subject-narrow">
-                                <label class="visually-hidden" for="settings-grade-text">Current Grade</label>
+                                <label class="visually-hidden" for="settings-grade-text">{{ _('Current Grade') }}</label>
                                 <input type="text" id="settings-grade-text" name="grade_occupation_text"
-                                    class="settings-input" placeholder="Current Grade" value="{{ grade_occupation }}"
+                                    class="settings-input" placeholder="{{ _('Current Grade') }}" value="{{ grade_occupation }}"
                                     maxlength="80">
                             </div>
                         </div>
-                        <p class="settings-hint">Grade is used to tailor quiz questions in gameplay.</p>
-                        <label class="visually-hidden" for="settings-difficulty">Difficulty Level</label>
+                        <p class="settings-hint">{{ _('Grade is used to tailor quiz questions in gameplay.') }}</p>
+                        <label class="visually-hidden" for="settings-difficulty">{{ _('Difficulty Level') }}</label>
                         <select id="settings-difficulty" name="difficulty_level" class="settings-input settings-select">
                             {% for opt in difficulty_options %}
-                            <option value="{{ opt }}" {% if difficulty_level==opt %}selected{% endif %}>{{ opt|capitalize }}</option>
+                            <option value="{{ opt }}" {% if difficulty_level==opt %}selected{% endif %}>{{ _(opt) }}</option>
                             {% endfor %}
                         </select>
-                        <label class="visually-hidden" for="settings-num">Questions per game</label>
+                        <label class="visually-hidden" for="settings-num">{{ _('Questions per game') }}</label>
                         <input type="number" id="settings-num" name="default_num_questions"
                             class="settings-input" value="{{ num_questions }}" min="1"
-                            max="{{ max_questions }}" aria-label="Questions per game">
+                            max="{{ max_questions }}" aria-label="{{ _('Questions per game') }}">
 
                         <hr class="settings-div">
 
-                        <h3 class="settings-h3">Remove Data</h3>
-                        <button type="button" id="settings-erase" class="settings-btn settings-erase">Erase</button>
+                        <h3 class="settings-h3">{{ _('Remove Data') }}</h3>
+                        <button type="button" id="settings-erase" class="settings-btn settings-erase">{{ _('Erase') }}</button>
                     </div>
                 </section>
             </div>
@@ -163,6 +163,17 @@
 
     <footer class="home-footer">Copyright &copy; 2026</footer>
 
+    <script>
+        window.I18N = {
+            saved: "{{ _('Settings saved.') }}",
+            saveFail: "{{ _('Could not save settings.') }}",
+            erased: "{{ _('Game data erased.') }}",
+            eraseFail: "{{ _('Could not erase data.') }}",
+            deleteFail: "{{ _('Could not delete account.') }}",
+            confirmDelete: "{{ _('Delete your account permanently? This cannot be undone.') }}",
+            confirmErase: "{{ _('Erase your game data (scores, wins, power-ups)? Your account stays.') }}"
+        };
+    </script>
     <script>
         (function () {
             var form = document.getElementById('settings-form');
@@ -254,15 +265,15 @@
                     body: JSON.stringify(payload)
                 }).then(function (resp) {
                     return resp.json().catch(function () { return {}; }).then(function (body) {
-                        if (!resp.ok) throw new Error(body.error || ('Save failed (' + resp.status + ').'));
+                        if (!resp.ok) throw new Error(body.error || (window.I18N.saveFail + ' (' + resp.status + ').'));
                         return body;
                     });
                 }).then(function () {
-                    showOk('Settings saved.');
+                    showOk(window.I18N.saved);
                     if (gradeSelect) gradeSelect.value = payload.grade_occupation || '';
                     if (gradeText) gradeText.value = payload.grade_occupation || '';
                 }).catch(function (err) {
-                    showError(err.message || 'Could not save settings.');
+                    showError(err.message || window.I18N.saveFail);
                 }).then(function () {
                     if (saveBtn) saveBtn.disabled = false;
                 });
@@ -289,15 +300,15 @@
 
             if (deleteBtn) {
                 deleteBtn.addEventListener('click', function () {
-                    if (!confirm('Delete your account permanently? This cannot be undone.')) return;
+                    if (!confirm(window.I18N.confirmDelete)) return;
                     deleteBtn.disabled = true;
                     fetch('{{ url_for("account_delete") }}', { method: 'DELETE' })
                         .then(function (resp) {
-                            if (!resp.ok) throw new Error('Delete failed (' + resp.status + ').');
+                            if (!resp.ok) throw new Error(window.I18N.deleteFail + ' (' + resp.status + ').');
                             window.location.href = '{{ url_for("homepage") }}';
                         })
                         .catch(function (err) {
-                            showError(err.message || 'Could not delete account.');
+                            showError(err.message || window.I18N.deleteFail);
                             deleteBtn.disabled = false;
                         });
                 });
@@ -305,15 +316,15 @@
 
             if (eraseBtn) {
                 eraseBtn.addEventListener('click', function () {
-                    if (!confirm('Erase your game data (scores, wins, power-ups)? Your account stays.')) return;
+                    if (!confirm(window.I18N.confirmErase)) return;
                     eraseBtn.disabled = true;
                     fetch('{{ url_for("account_erase_data") }}', { method: 'POST' })
                         .then(function (resp) {
-                            if (!resp.ok) throw new Error('Erase failed (' + resp.status + ').');
-                            showOk('Game data erased.');
+                            if (!resp.ok) throw new Error(window.I18N.eraseFail + ' (' + resp.status + ').');
+                            showOk(window.I18N.erased);
                         })
                         .catch(function (err) {
-                            showError(err.message || 'Could not erase data.');
+                            showError(err.message || window.I18N.eraseFail);
                         })
                         .then(function () {
                             eraseBtn.disabled = false;

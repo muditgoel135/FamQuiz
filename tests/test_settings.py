@@ -140,8 +140,6 @@ class TestSettingsPage:
         resp = client.delete("/api/account")
         assert resp.status_code == 200
         with app.app_context():
-            assert (
-                User.query.filter_by(email=existing_user["email"]).count() == 0
-            )
+            assert User.query.filter_by(email=existing_user["email"]).count() == 0
         # Logged out: gated page redirects again.
         assert client.get("/gameplay").status_code == 302

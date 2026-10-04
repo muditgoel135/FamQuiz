@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ html_lang }}">
 
 <head>
     <meta charset="UTF-8">
@@ -20,15 +20,15 @@
                 <span class="fw-bold">{{ player_name }}: #{{ player_rank }}</span>
             </div>
             <span class="game-brand fw-bold mx-auto">FamQuiz</span>
-            <div class="game-score bg-white rounded px-4 py-1" id="game-score">Score: {{ player_score }}</div>
+            <div class="game-score bg-white rounded px-4 py-1" id="game-score">{{ _('Score:') }} {{ player_score }}</div>
         </header>
 
-        <section class="game-question d-flex align-items-center justify-content-center gap-3" aria-label="Question">
-            <h1 class="flex-grow-1 text-center m-0" id="game-question-text">Loading questions…</h1>
+        <section class="game-question d-flex align-items-center justify-content-center gap-3" aria-label="{{ _('Question') }}">
+            <h1 class="flex-grow-1 text-center m-0" id="game-question-text">{{ _('Loading questions…') }}</h1>
         </section>
         <p id="game-hint" class="text-center fw-bold mb-0" hidden></p>
 
-        <section class="row g-2 g-lg-3 mx-0 game-options" aria-label="Answer options">
+        <section class="row g-2 g-lg-3 mx-0 game-options" aria-label="{{ _('Answer options') }}">
             <div class="col-6 col-lg-3">
                 <button type="button" class="game-option opt-1 w-100" data-index="0" disabled>…</button>
             </div>
@@ -44,23 +44,23 @@
         </section>
 
         <footer class="game-hud-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
-            <span id="game-progress">Question 1/{{ num_questions }}</span>
+            <span id="game-progress">{{ _('Question') }} 1/{{ num_questions }}</span>
             <div class="d-flex align-items-center gap-3 mx-auto game-powerups" role="group"
-                aria-label="Power-ups">
-                <button type="button" aria-label="Double points" data-kind="double" disabled>
+                aria-label="{{ _('Power-ups') }}">
+                <button type="button" aria-label="{{ _('Double points') }}" data-kind="double" disabled>
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
                         <path
                             d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 12.2l7.1-.6L12 2z" />
                     </svg>
                 </button>
-                <button type="button" aria-label="Remove two options" data-kind="fifty" disabled>
+                <button type="button" aria-label="{{ _('Remove two options') }}" data-kind="fifty" disabled>
                     <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
                         <rect x="2" y="4" width="20" height="16" rx="3" fill="currentColor" />
                         <text x="12" y="16.5" text-anchor="middle" font-size="9" font-weight="bold" fill="#4aa8ec"
                             font-family="system-ui, sans-serif">123</text>
                     </svg>
                 </button>
-                <button type="button" aria-label="Calculator" data-kind="calc" disabled>
+                <button type="button" aria-label="{{ _('Calculator') }}" data-kind="calc" disabled>
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor"
                         stroke-width="2" aria-hidden="true">
                         <rect x="5" y="2" width="14" height="20" rx="2" />
@@ -73,7 +73,7 @@
                         <circle cx="15" cy="19" r="1" fill="currentColor" stroke="none" />
                     </svg>
                 </button>
-                <button type="button" aria-label="Hint" data-kind="hint" disabled>
+                <button type="button" aria-label="{{ _('Hint') }}" data-kind="hint" disabled>
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor"
                         stroke-width="2" aria-hidden="true">
                         <path d="M9 18h6M10 21h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z" />
@@ -81,9 +81,27 @@
                     </svg>
                 </button>
             </div>
-            <a href="{{ url_for('homepage') }}" class="game-quit btn btn-danger px-5">Quit</a>
+            <a href="{{ url_for('homepage') }}" class="game-quit btn btn-danger px-5">{{ _('Quit') }}</a>
         </footer>
     </main>
+    <script>
+        window.I18N = {
+            noQuiz: "{{ _('No active quiz. Start a game from the homepage.') }}",
+            loadFail: "{{ _('Could not load the quiz.') }}",
+            submitFail: "{{ _('Could not submit the answer.') }}",
+            powerFail: "{{ _('Power-up failed.') }}",
+            finishFail: "{{ _('Could not finish the quiz.') }}",
+            complete: "{{ _('Quiz complete!') }}",
+            youScored: "{{ _('You scored') }}",
+            topWin: "{{ _('— top score, you win!') }}",
+            best: "{{ _('. Best: ') }}",
+            done: "{{ _('Done!') }}",
+            question: "{{ _('Question') }}",
+            score: "{{ _('Score:') }}",
+            hintPrefix: "{{ _('Hint: the answer starts with') }}",
+            requestFail: "{{ _('Quiz service failed (') }}"
+        };
+    </script>
     <script>
         (function () {
             var questionEl = document.getElementById("game-question-text");
@@ -101,7 +119,7 @@
             var finishedQuiz = false;
 
             function fmt(n) {
-                return Number(n || 0).toLocaleString("en-US");
+                return Number(n || 0).toLocaleString(document.documentElement.lang || "en-US");
             }
 
             function handleErrors(res) {
@@ -114,7 +132,7 @@
                         .then(function (body) {
                             throw new Error(
                                 body.error ||
-                                    "Request failed (" + res.status + ")."
+                                    (window.I18N.requestFail + res.status + ").")
                             );
                         });
                 }
@@ -164,8 +182,8 @@
                 });
                 setOptionsEnabled(true);
                 progressEl.textContent =
-                    "Question " + (state.index + 1) + "/" + state.total;
-                scoreEl.textContent = "Score: " + fmt(state.quiz_score);
+                    window.I18N.question + " " + (state.index + 1) + "/" + state.total;
+                scoreEl.textContent = window.I18N.score + " " + fmt(state.quiz_score);
                 setPowerups(state.powerup);
             }
 
@@ -181,8 +199,7 @@
 
             function showNoQuiz() {
                 currentIndex = -1;
-                questionEl.textContent =
-                    "No active quiz. Start a game from the homepage.";
+                questionEl.textContent = window.I18N.noQuiz;
                 hintEl.hidden = true;
                 optionBtns.forEach(function (btn) {
                     btn.textContent = "—";
@@ -203,7 +220,7 @@
                         ) {
                             showNoQuiz();
                         } else {
-                            showError(err.message || "Could not load the quiz.");
+                            showError(err.message || window.I18N.loadFail);
                         }
                     });
             }
@@ -221,7 +238,7 @@
                         if (!res.correct) {
                             optionBtns[idx].classList.add("wrong");
                         }
-                        scoreEl.textContent = "Score: " + fmt(res.quiz_score);
+                        scoreEl.textContent = window.I18N.score + " " + fmt(res.quiz_score);
                         setPowerups(null);
                         setTimeout(function () {
                             answering = false;
@@ -234,7 +251,7 @@
                     })
                     .catch(function (err) {
                         answering = false;
-                        showError(err.message || "Could not submit the answer.");
+                        showError(err.message || window.I18N.submitFail);
                     });
             }
 
@@ -253,7 +270,7 @@
                         }
                         if (res.kind === "hint" && res.hint) {
                             hintEl.textContent =
-                                "Hint: the answer starts with \u201c" +
+                                window.I18N.hintPrefix + " \u201c" +
                                 res.hint +
                                 "\u201d";
                             hintEl.hidden = false;
@@ -268,7 +285,7 @@
                         btn.classList.remove("available");
                     })
                     .catch(function (err) {
-                        showError(err.message || "Power-up failed.");
+                        showError(err.message || window.I18N.powerFail);
                     });
             }
 
@@ -278,21 +295,21 @@
                 setPowerups(null);
                 post("{{ url_for('quiz_finish') }}", {})
                     .then(function (res) {
-                        questionEl.textContent = "Quiz complete!";
+                        questionEl.textContent = window.I18N.complete;
                         hintEl.textContent =
-                            "You scored " +
+                            window.I18N.youScored + " " +
                             fmt(res.quiz_score) +
-                            " points" +
+                            " " + "{{ _('points') }}" +
                             (res.is_win
-                                ? " — top score, you win!"
-                                : ". Best: " + fmt(res.best_score) + ".");
+                                ? " " + window.I18N.topWin
+                                : window.I18N.best + fmt(res.best_score) + ".");
                         hintEl.hidden = false;
                         progressEl.textContent =
-                            "Done! " + res.total + "/" + res.total;
-                        scoreEl.textContent = "Score: " + fmt(res.quiz_score);
+                            window.I18N.done + " " + res.total + "/" + res.total;
+                        scoreEl.textContent = window.I18N.score + " " + fmt(res.quiz_score);
                     })
                     .catch(function (err) {
-                        showError(err.message || "Could not finish the quiz.");
+                        showError(err.message || window.I18N.finishFail);
                     });
             }
 

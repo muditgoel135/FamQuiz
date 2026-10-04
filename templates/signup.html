@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ html_lang }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FamQuiz - Sign up</title>
+    <title>FamQuiz - {{ _('Sign up') }}</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
@@ -16,16 +16,16 @@
 
     <main class="auth-main container-fluid d-flex justify-content-center">
         <div class="auth-card">
-            <h1 class="auth-title">Welcome!</h1>
+            <h1 class="auth-title">{{ _('Welcome!') }}</h1>
             <form action="{{ url_for_security('register') }}" method="POST" name="register_user_form"
                 class="auth-form d-flex flex-column" novalidate>
                 {{ register_user_form.hidden_tag() }}
 
                 <div class="auth-field mb-3">
-                    {% set email_ph = "Enter your email address" %}
-                    {% set pw_ph = "Enter your password" %}
-                    {% set pw2_ph = "Enter your password again" %}
-                    <label for="email" class="form-label">Email</label>
+                    {% set email_ph = _('Enter your email address') %}
+                    {% set pw_ph = _('Enter your password') %}
+                    {% set pw2_ph = _('Enter your password again') %}
+                    <label for="email" class="form-label">{{ _('Email') }}</label>
                     {{ register_user_form.email(id="email", class="form-control auth-input", placeholder=email_ph,
                     autocomplete="email") }}
                     {% if register_user_form.email.errors %}
@@ -36,7 +36,7 @@
                 </div>
 
                 <div class="auth-field mb-3">
-                    <label for="password" class="form-label">Password</label>
+                    <label for="password" class="form-label">{{ _('Password') }}</label>
                     {{ register_user_form.password(id="password", class="form-control auth-input", placeholder=pw_ph,
                     autocomplete="new-password") }}
                     {% if register_user_form.password.errors %}
@@ -47,7 +47,7 @@
                 </div>
 
                 <div class="auth-field mb-3">
-                    <label for="password_confirm" class="form-label">Confirm Password</label>
+                    <label for="password_confirm" class="form-label">{{ _('Confirm Password') }}</label>
                     {{ register_user_form.password_confirm(id="password_confirm", class="form-control auth-input",
                     placeholder=pw2_ph, autocomplete="new-password") }}
                     {% if register_user_form.password_confirm.errors %}
@@ -57,12 +57,12 @@
                     {% endif %}
                 </div>
 
-                <button type="submit" class="btn w-100 auth-btn">Sign up</button>
+                <button type="submit" class="btn w-100 auth-btn">{{ _('Sign up') }}</button>
             </form>
 
             <div class="auth-links d-flex flex-wrap justify-content-between">
-                <a href="{{ url_for_security('login') }}">Have an account? Log in!</a>
-                <a href="{{ url_for_security('forgot_password') }}">Forgot your password?</a>
+                <a href="{{ url_for_security('login') }}">{{ _('Have an account? Log in!') }}</a>
+                <a href="{{ url_for_security('forgot_password') }}">{{ _('Forgot your password?') }}</a>
             </div>
         </div>
     </main>

@@ -5,11 +5,11 @@
         <span class="nav-title">FamQuiz</span>
     </a>
     <ul id="nav-links" class="d-flex flex-wrap align-items-center mb-0">
-        <li><a href="{{ url_for('guide') }}">How to use</a></li>
-        <li><a href="{{ url_for('leaderboard') }}">Leaderboard</a></li>
+        <li><a href="{{ url_for('guide') }}">{{ _('How to use') }}</a></li>
+        <li><a href="{{ url_for('leaderboard') }}">{{ _('Leaderboard') }}</a></li>
         {% if current_user.is_authenticated %}
-        <li><a href="{{ url_for_security('change_password') }}">Change password</a></li>
+        <li><a href="{{ url_for_security('change_password') }}">{{ _('Change password') }}</a></li>
         {% endif %}
-        <li><a href="{{ url_for('homepage') }}">Back to home-&gt;</a></li>
+        <li><a href="{{ url_for('homepage') }}">{{ _('Back to home->') }}</a></li>
     </ul>
 </nav>
