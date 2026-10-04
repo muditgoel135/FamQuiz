@@ -1,0 +1,3 @@
+{{ _('Hello,') }}
+
+{{ _('Your password has been reset.') }}

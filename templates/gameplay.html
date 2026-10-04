@@ -20,10 +20,12 @@
                 <span class="fw-bold">{{ player_name }}: #{{ player_rank }}</span>
             </div>
             <span class="game-brand fw-bold mx-auto">FamQuiz</span>
-            <div class="game-score bg-white rounded px-4 py-1" id="game-score">{{ _('Score:') }} {{ player_score }}</div>
+            <div class="game-score bg-white rounded px-4 py-1" id="game-score">{{ _('Score:') }} {{ player_score }}
+            </div>
         </header>
 
-        <section class="game-question d-flex align-items-center justify-content-center gap-3" aria-label="{{ _('Question') }}">
+        <section class="game-question d-flex align-items-center justify-content-center gap-3"
+            aria-label="{{ _('Question') }}">
             <h1 class="flex-grow-1 text-center m-0" id="game-question-text">{{ _('Loading questions…') }}</h1>
         </section>
         <p id="game-hint" class="text-center fw-bold mb-0" hidden></p>
@@ -49,8 +51,7 @@
                 aria-label="{{ _('Power-ups') }}">
                 <button type="button" aria-label="{{ _('Double points') }}" data-kind="double" disabled>
                     <svg viewBox="0 0 24 24" width="28" height="28" fill="currentColor" aria-hidden="true">
-                        <path
-                            d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 12.2l7.1-.6L12 2z" />
+                        <path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 12.2l7.1-.6L12 2z" />
                     </svg>
                 </button>
                 <button type="button" aria-label="{{ _('Remove two options') }}" data-kind="fifty" disabled>
@@ -61,8 +62,8 @@
                     </svg>
                 </button>
                 <button type="button" aria-label="{{ _('Calculator') }}" data-kind="calc" disabled>
-                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor"
-                        stroke-width="2" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"
+                        aria-hidden="true">
                         <rect x="5" y="2" width="14" height="20" rx="2" />
                         <line x1="8" y1="6" x2="16" y2="6" />
                         <circle cx="9" cy="11" r="1" fill="currentColor" stroke="none" />
@@ -74,9 +75,10 @@
                     </svg>
                 </button>
                 <button type="button" aria-label="{{ _('Hint') }}" data-kind="hint" disabled>
-                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor"
-                        stroke-width="2" aria-hidden="true">
-                        <path d="M9 18h6M10 21h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z" />
+                    <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"
+                        aria-hidden="true">
+                        <path
+                            d="M9 18h6M10 21h4M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.4 1 2.3h6c0-.9.4-1.8 1-2.3A7 7 0 0 0 12 2z" />
                         <circle cx="12" cy="10" r="1.5" fill="currentColor" stroke="none" />
                     </svg>
                 </button>
@@ -132,7 +134,7 @@
                         .then(function (body) {
                             throw new Error(
                                 body.error ||
-                                    (window.I18N.requestFail + res.status + ").")
+                                (window.I18N.requestFail + res.status + ").")
                             );
                         });
                 }

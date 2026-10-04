@@ -1,0 +1,6 @@
+{{ _('Hello,') }}
+
+{{ _('Use this link to reset your password:') }}
+{{ reset_link }}
+
+{{ _('This link will expire in:') }} {{ within }}

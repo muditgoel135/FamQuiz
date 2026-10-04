@@ -28,21 +28,33 @@ missing, emails are suppressed and a warning is logged instead of crashing.
 
 ## Languages (Client 1: English, Spanish, Hindi, Mandarin Simplified)
 
-Full UI including quiz. No extra dependency — `translations.py` holds the
-`es`/`hi`/`zh_Hans` dictionaries (zero-dependency equivalent of the
+Full UI including quiz and mails. No extra dependency — `translations.json`
+holds the `es`/`hi`/`zh_Hans` dictionaries (zero-dependency equivalent of the
 Flask-User/Flask-Security-Too + Flask-Babel internationalisation in the
 E-portfolio). `User.language` stores the full name; `get_locale()` in
-`app.py` resolves `?lang=` > session > user > `Accept-Language` > `en`.
+`app.py` resolves per-email override > `?lang=` > session > user >
+`Accept-Language` > `en`.
 
 * Switch in Settings (persists + applies immediately via session) or
   `/?lang=es`, `/?lang=hi`, `/?lang=zh_Hans` for anonymous preview.
 * Quiz questions use the same language (`build_quiz_messages()`), with an
   explicit `Use Simplified Chinese.` clause for Mandarin.
+* Mails (reset instructions/notice, change notice) use per-recipient
+  templates in `templates/security/email/` plus translated subjects via
+  `TranslatedMailUtil` — verified in `tests/test_i18n.py::TestTranslatedMails`.
 * JS strings come from `window.I18N` (injected per-page) and
   `GET /api/i18n/<locale>.json`.
 * Add a string: add the English source to all three dicts in
-  `translations.py` and use `{{ _('...') }}` in templates. Run
+  `translations.json` and use `{{ _('...') }}` in templates. Run
   `pytest tests/test_i18n.py -q` to verify.
+
+## Project structure
+
+* `app.py` — config, models, i18n helpers, quiz helpers, mail hooks, slim
+  `create_app()` factory.
+* `routes.py` — all view functions + `register_routes(app)` (endpoint names
+  unchanged, so `url_for()` calls keep working).
+* `translations.json` — UI + mail strings for `es`/`hi`/`zh_Hans`.
 
 Note: `tests/test_live_mail.py` runs with the suite and sends one real
 password-reset email to the verified sender address, then confirms via

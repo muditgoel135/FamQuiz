@@ -1,0 +1,5 @@
+{{ _('Hello,') }}
+
+{{ _('Your password has been changed.') }}
+{{ _('If you did not change your password, reset it here:') }}
+{{ url_for_security('forgot_password', _external=True) }}

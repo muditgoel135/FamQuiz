@@ -47,8 +47,12 @@
                             <span class="home-rank home-serif">#{{ entry.rank }}</span>
                             <span class="home-player-avatar" aria-hidden="true">{{ entry.initial }}</span>
                             <span class="home-player-text d-flex flex-column">
-                                <strong class="home-player-name home-serif">{{ entry.name }}{% if entry.is_you %} {{ _('(You)') }}{% endif %}</strong>
-                                <small class="home-player-status">{{ _(entry.status) if entry.status in ['Ready to play', 'Do not disturb', 'offline'] else entry.status }}</small>
+                                <strong class="home-player-name home-serif">
+                                    {{ entry.name }}{% if entry.is_you %} {{ _('(You)') }}{% endif %}
+                                </strong>
+                                <small class="home-player-status">
+                                    {{ _(entry.status) if entry.status in ['Ready to play', 'Do not disturb', 'offline'] else entry.status }}
+                                </small>
                             </span>
                             <span class="home-dot home-dot-{{ entry.dot }} ms-auto"
                                 aria-label="{{ entry.status }}"></span>
@@ -68,7 +72,9 @@
                         data-authenticated="{{ '1' if current_user.is_authenticated else '0' }}">{{ _('Start game') }}</button>
                     <div id="home-error" class="home-error" role="alert" hidden></div>
                     <div class="home-option d-flex flex-wrap align-items-center gap-2">
-                        <label for="home-num" class="home-label home-serif">{{ _('No. of questions:') }}</label>
+                        <label for="home-num" class="home-label home-serif">
+                            {{ _('No. of questions:') }}
+                        </label>
                         <input type="number" id="home-num" name="num_questions" class="home-input"
                             value="{{ default_num_questions }}" min="1" max="{{ max_questions }}">
                     </div>
@@ -85,8 +91,9 @@
                             <option value="" {% if not difficulty_level %}selected{% endif %}>{{ _('Choose difficulty level') }}
                             </option>
                             {% for level in difficulty_options %}
-                            <option value="{{ level }}" {% if difficulty_level==level %}selected{% endif %}>{{
-                                _(level) }}</option>
+                            <option value="{{ level }}" {% if difficulty_level==level %}selected{% endif %}>
+                                {{ _(level) }}
+                            </option>
                             {% endfor %}
                         </select>
                     </div>
@@ -100,18 +107,30 @@
             <div class="row g-3 mx-0">
                 <div class="col-12 col-md-4 text-center">
                     <h3 class="home-sub home-serif">{{ _('Games played') }}</h3>
-                    <p class="home-stat home-serif mb-1">{{ _('Total games played in the family:') }} {{ family_games }}</p>
-                    <p class="home-stat home-serif mb-0">{{ _('Total games played by you:') }} {{ you_games }}</p>
+                    <p class="home-stat home-serif mb-1">
+                        {{ _('Total games played in the family:') }} {{ family_games }}
+                    </p>
+                    <p class="home-stat home-serif mb-0">
+                        {{ _('Total games played by you:') }} {{ you_games }}
+                    </p>
                 </div>
                 <div class="col-12 col-md-4 text-center">
                     <h3 class="home-sub home-serif">{{ _('Wins and scoring') }}</h3>
-                    <p class="home-stat home-serif mb-1">{{ _('No. of wins by you:') }} {{ you_wins }}</p>
-                    <p class="home-stat home-serif mb-0">{{ _('Best score:') }} {{ "{:,}".format(best_score) }} {{ _('points') }}</p>
+                    <p class="home-stat home-serif mb-1">
+                        {{ _('No. of wins by you:') }} {{ you_wins }}
+                    </p>
+                    <p class="home-stat home-serif mb-0">
+                        {{ _('Best score:') }} {{ "{:,}".format(best_score) }} {{ _('points') }}
+                    </p>
                 </div>
                 <div class="col-12 col-md-4 text-center">
                     <h3 class="home-sub home-serif">{{ _('Powerups used') }}</h3>
-                    <p class="home-stat home-serif mb-1">{{ _('Total no. of powerups used:') }} {{ powerups_used }}</p>
-                    <p class="home-stat home-serif mb-0">{{ _('Most-used powerup:') }} {{ most_used_powerup }}</p>
+                    <p class="home-stat home-serif mb-1">
+                        {{ _('Total no. of powerups used:') }} {{ powerups_used }}
+                    </p>
+                    <p class="home-stat home-serif mb-0">
+                        {{ _('Most-used powerup:') }} {{ most_used_powerup }}
+                    </p>
                 </div>
             </div>
             {% else %}
