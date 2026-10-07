@@ -1,3 +1,8 @@
 <p>{{ _('Hello,') }}</p>
 <p>{{ _('Your password has been changed.') }}</p>
-<p>{{ _('If you did not change your password, reset it here:') }} <a href="{{ url_for_security('forgot_password', _external=True) }}">{{ url_for_security('forgot_password', _external=True) }}</a></p>
+<p>
+    {{ _('If you did not change your password, reset it here:') }}
+    <a href="{{ url_for_security('forgot_password', _external=True) }}">
+        {{ url_for_security('forgot_password', _external=True) }}
+    </a>
+</p>

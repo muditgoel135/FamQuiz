@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>FamQuiz - {{ _('Settings') }}</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
@@ -166,14 +167,15 @@
 
     <script>
         window.I18N = {
-            saved: "{{ _('Settings saved.') }}",
-            saveFail: "{{ _('Could not save settings.') }}",
-            erased: "{{ _('Game data erased.') }}",
-            eraseFail: "{{ _('Could not erase data.') }}",
-            deleteFail: "{{ _('Could not delete account.') }}",
-            confirmDelete: "{{ _('Delete your account permanently? This cannot be undone.') }}",
-            confirmErase: "{{ _('Erase your game data (scores, wins, power-ups)? Your account stays.') }}"
+            saved: {{ _('Settings saved.')|tojson }},
+            saveFail: {{ _('Could not save settings.')|tojson }},
+            erased: {{ _('Game data erased.')|tojson }},
+            eraseFail: {{ _('Could not erase data.')|tojson }},
+            deleteFail: {{ _('Could not delete account.')|tojson }},
+            confirmDelete: {{ _('Delete your account permanently? This cannot be undone.')|tojson }},
+            confirmErase: {{ _('Erase your game data (scores, wins, power-ups)? Your account stays.')|tojson }}
         };
+        window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || "";
     </script>
     <script>
         (function () {
@@ -210,23 +212,44 @@
                 language: (form.querySelector('input[name="language"]:checked') || {}).value || 'English'
             };
 
-            function showError(msg) {
+            function showError(msg, fields) {
                 if (okBox) okBox.hidden = true;
                 if (!errBox) return;
+                if (fields && typeof fields === 'object') {
+                    var parts = Object.keys(fields).map(function (k) { return k + ': ' + fields[k]; });
+                    if (parts.length) msg += ' (' + parts.join('; ') + ')';
+                }
                 errBox.textContent = msg;
                 errBox.hidden = false;
             }
-            function showOk(msg) {
-                if (errBox) errBox.hidden = true;
-                if (!okBox) return;
-                okBox.textContent = msg;
-                okBox.hidden = false;
+            function csrfHeaders() {
+                var h = { 'Content-Type': 'application/json' };
+                if (window.CSRF_TOKEN) h['X-CSRFToken'] = window.CSRF_TOKEN;
+                return h;
+            }
+            function csrfHeadersNoBody() {
+                var h = {};
+                if (window.CSRF_TOKEN) h['X-CSRFToken'] = window.CSRF_TOKEN;
+                return h;
             }
             function checkedLanguage() {
                 var el = form.querySelector('input[name="language"]:checked');
                 return el ? el.value : 'English';
             }
-            // Keep the two grade controls in sync (select is canonical).
+            function snapshotInitial() {
+                initial.display_name = displayInput ? displayInput.value : '';
+                initial.nickname = nickInput ? nickInput.value : '';
+                initial.grade = gradeSelect ? gradeSelect.value : '';
+                initial.gradeText = gradeText ? gradeText.value : '';
+                initial.status = statusSelect ? statusSelect.value : '';
+                initial.difficulty = difficultySelect ? difficultySelect.value : '';
+                initial.num = numInput ? numInput.value : '';
+                initial.subject = subjectInput ? subjectInput.value : '';
+                initial.reminders = remindersInput ? !!remindersInput.checked : true;
+                initial.dark = themeInput ? !!themeInput.checked : false;
+                initial.language = checkedLanguage();
+            }
+            // Keep the two grade controls in sync (free text wins when custom).
             if (gradeSelect && gradeText) {
                 gradeSelect.addEventListener('change', function () {
                     gradeText.value = gradeSelect.value;
@@ -236,6 +259,7 @@
                         return o.value === gradeText.value;
                     });
                     if (match) gradeSelect.value = gradeText.value;
+                    else if (!gradeText.value) gradeSelect.value = '';
                 });
             }
 
@@ -243,8 +267,8 @@
                 ev.preventDefault();
                 if (errBox) errBox.hidden = true;
                 if (okBox) okBox.hidden = true;
-                var grade = gradeSelect ? gradeSelect.value : '';
-                if (!grade && gradeText) grade = gradeText.value.trim();
+                // Prefer custom text when it differs from the select.
+                var grade = gradeText && gradeText.value.trim() ? gradeText.value.trim() : (gradeSelect ? gradeSelect.value : '');
                 var payload = {
                     display_name: displayInput ? displayInput.value : '',
                     nickname: nickInput ? nickInput.value : '',
@@ -262,19 +286,26 @@
                 if (saveBtn) saveBtn.disabled = true;
                 fetch('{{ url_for("settings_save") }}', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: csrfHeaders(),
                     body: JSON.stringify(payload)
                 }).then(function (resp) {
                     return resp.json().catch(function () { return {}; }).then(function (body) {
-                        if (!resp.ok) throw new Error(body.error || (window.I18N.saveFail + ' (' + resp.status + ').'));
+                        if (!resp.ok) {
+                            var e = new Error(body.error || (window.I18N.saveFail + ' (' + resp.status + ').'));
+                            e.fields = body.fields;
+                            throw e;
+                        }
                         return body;
                     });
                 }).then(function () {
                     showOk(window.I18N.saved);
                     if (gradeSelect) gradeSelect.value = payload.grade_occupation || '';
                     if (gradeText) gradeText.value = payload.grade_occupation || '';
+                    snapshotInitial();
+                    // Apply theme immediately without reload.
+                    document.body.classList.toggle('theme-dark', payload.theme_mode === 'dark');
                 }).catch(function (err) {
-                    showError(err.message || window.I18N.saveFail);
+                    showError(err.message || window.I18N.saveFail, err.fields);
                 }).then(function () {
                     if (saveBtn) saveBtn.disabled = false;
                 });
@@ -303,7 +334,7 @@
                 deleteBtn.addEventListener('click', function () {
                     if (!confirm(window.I18N.confirmDelete)) return;
                     deleteBtn.disabled = true;
-                    fetch('{{ url_for("account_delete") }}', { method: 'DELETE' })
+                    fetch('{{ url_for("account_delete") }}', { method: 'DELETE', headers: csrfHeadersNoBody() })
                         .then(function (resp) {
                             if (!resp.ok) throw new Error(window.I18N.deleteFail + ' (' + resp.status + ').');
                             window.location.href = '{{ url_for("homepage") }}';
@@ -319,10 +350,11 @@
                 eraseBtn.addEventListener('click', function () {
                     if (!confirm(window.I18N.confirmErase)) return;
                     eraseBtn.disabled = true;
-                    fetch('{{ url_for("account_erase_data") }}', { method: 'POST' })
+                    fetch('{{ url_for("account_erase_data") }}', { method: 'POST', headers: csrfHeadersNoBody() })
                         .then(function (resp) {
                             if (!resp.ok) throw new Error(window.I18N.eraseFail + ' (' + resp.status + ').');
                             showOk(window.I18N.erased);
+                            setTimeout(function () { window.location.reload(); }, 800);
                         })
                         .catch(function (err) {
                             showError(err.message || window.I18N.eraseFail);

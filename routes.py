@@ -59,6 +59,38 @@ SETTINGS_GRADES = ("K-12", "College", "Job")
 SETTINGS_THEMES = ("light", "dark")
 SETTINGS_STATUSES = ("Ready to play", "Do not disturb", "offline")
 
+# Lightweight in-memory rate limits for LAN (no extra dependency).
+# {key: [timestamps]}. Skipped when TESTING=True so the suite stays fast.
+_RATE_BUCKETS: dict[str, list[float]] = {}
+
+
+def _rate_limited(key: str, limit: int, window_s: int) -> bool:
+    """Return True when key exceeded limit in window (and record hit)."""
+    try:
+        from flask import current_app
+
+        if current_app.config.get("TESTING"):
+            return False
+    except Exception:
+        pass
+    now = time.time()
+    hits = _RATE_BUCKETS.get(key, [])
+    hits = [t for t in hits if now - t < window_s]
+    if len(hits) >= limit:
+        _RATE_BUCKETS[key] = hits
+        return True
+    hits.append(now)
+    _RATE_BUCKETS[key] = hits
+    return False
+
+
+def _quiz_cooldown_key() -> str:
+    try:
+        uid = getattr(current_user, "id", "anon")
+    except Exception:
+        uid = "anon"
+    return f"quiz:{uid}:{request.remote_addr}"
+
 
 def inject_theme():
     """
@@ -198,7 +230,11 @@ def homepage():
         default_num = 10
         difficulty = ""
         avatar_initial = "A"
-    default_num = max(1, min(int(default_num or 10), MAX_QUIZ_QUESTIONS))
+    try:
+        default_num = int(default_num or 10)
+    except (TypeError, ValueError):
+        default_num = 10
+    default_num = max(1, min(default_num, MAX_QUIZ_QUESTIONS))
 
     return render_template(
         "index.html",
@@ -295,7 +331,8 @@ def settings_save():
             return None, None
         if not isinstance(value, str):
             return None, "must be a string"
-        text = value.strip()
+        # Single-line: grade/subject go into the LLM prompt.
+        text = " ".join(value.split()).strip()
         if len(text) > limit:
             return None, f"must be at most {limit} characters"
         return (text or None), None
@@ -356,16 +393,25 @@ def settings_save():
             )
 
     if "default_num_questions" in payload:
-        try:
-            num_questions = int(payload.get("default_num_questions"))  # type: ignore[arg-type] -- None/str handled by except below
-        except (TypeError, ValueError):
+        raw_num = payload.get("default_num_questions")
+        # bool is a subclass of int: reject True/False explicitly.
+        if isinstance(raw_num, bool):
             errors["default_num_questions"] = "must be a whole number"
             num_questions = None
         else:
-            if not 1 <= num_questions <= MAX_QUIZ_QUESTIONS:
-                errors["default_num_questions"] = (
-                    f"must be between 1 and {MAX_QUIZ_QUESTIONS}"
-                )
+            try:
+                # Reject floats like 5.5 (int() would truncate).
+                if isinstance(raw_num, float):
+                    raise ValueError("float")
+                num_questions = int(raw_num)  # type: ignore[arg-type] -- None/str handled by except below
+            except (TypeError, ValueError):
+                errors["default_num_questions"] = "must be a whole number"
+                num_questions = None
+            else:
+                if not 1 <= num_questions <= MAX_QUIZ_QUESTIONS:
+                    errors["default_num_questions"] = (
+                        f"must be between 1 and {MAX_QUIZ_QUESTIONS}"
+                    )
     else:
         try:
             num_questions = int(current_user.default_num_questions or 10)
@@ -458,8 +504,16 @@ def account_delete():
     session.clear()
     user = db.session.get(User, user_id)
     if user is not None:
-        db.session.delete(user)
-        db.session.commit()
+        # Cancel own live lobbies so they don't become un-cancellable
+        # orphans (game_cancel requires created_by_id match).
+        try:
+            for g in GameSession.query.filter_by(created_by_id=user_id).all():
+                if g.status in ("lobby", "active"):
+                    g.status = "cancelled"
+            db.session.delete(user)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
     return jsonify({"ok": True})
 
 
@@ -553,13 +607,27 @@ def quiz_generate():
     :rtype: flask.Response
     """
 
+    # LAN cost guard: one paid cloud call per 10s per user (tests exempt).
+    if _rate_limited(_quiz_cooldown_key(), limit=1, window_s=10):
+        return jsonify({"error": "Quiz cooling down. Wait a few seconds."}), 429
     payload = request.get_json(silent=True) or {}
-    try:
-        num = int(
-            payload.get("num_questions") or current_user.default_num_questions or 10
-        )
-    except (TypeError, ValueError):
+    raw_num = payload.get("num_questions")
+    if raw_num is None:
+        raw_num = current_user.default_num_questions or 10
+    # 0 falls back to default (homepage empty input); bool rejected.
+    if isinstance(raw_num, bool):
         num = 10
+    else:
+        try:
+            # 0/"" fall back to the saved default like the homepage does.
+            if raw_num == 0 or raw_num == "":
+                raise ValueError("fallback")
+            num = int(raw_num)
+        except (TypeError, ValueError):
+            try:
+                num = int(current_user.default_num_questions or 10)
+            except (TypeError, ValueError):
+                num = 10
     num = max(1, min(num, MAX_QUIZ_QUESTIONS))
     difficulty = payload.get("difficulty") or current_user.difficulty_level or "medium"
     if not isinstance(difficulty, str):
@@ -613,6 +681,14 @@ def quiz_state():
         return jsonify({"error": "No active quiz. Start a game first."}), 404
     if quiz.get("finished"):
         return jsonify({"error": "Quiz already finished."}), 409
+    try:
+        idx = quiz.get("index", 0)
+        if not isinstance(idx, int) or isinstance(idx, bool) or not 0 <= idx < len(
+            quiz.get("questions", [])
+        ):
+            raise IndexError("bad index")
+    except Exception:
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
     if quiz.get("started_at") is None:
         quiz["started_at"] = time.time()
         if quiz.get("powerups_enabled") and quiz.get("offered") is None:
@@ -623,7 +699,10 @@ def quiz_state():
             )
         quiz["powerup_used"] = False
         _store_quiz(quiz)
-    return jsonify(_public_state(quiz))
+    try:
+        return jsonify(_public_state(quiz))
+    except (IndexError, KeyError, TypeError):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
 
 
 @login_required
@@ -649,13 +728,20 @@ def quiz_answer():
         isinstance(option, bool)
         or not isinstance(option, int)
         or not 0 <= option <= 3
+        or isinstance(qindex, bool)
         or not isinstance(qindex, int)
         or qindex != quiz.get("index")
     ):
         return jsonify({"error": "Stale or invalid answer."}), 409
-    questions = quiz["questions"]
-    current = questions[quiz["index"]]
-    started = quiz.get("started_at") or time.time()
+    # Timer must be started via quiz_state; answering blind gets no free max.
+    if quiz.get("started_at") is None:
+        return jsonify({"error": "Timer not started. Reload the question."}), 409
+    try:
+        questions = quiz["questions"]
+        current = questions[quiz["index"]]
+    except (IndexError, KeyError, TypeError):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
+    started = quiz.get("started_at")
     limit = quiz.get("limit_ms") or QUESTION_TIME_LIMIT_MS
     elapsed = max(0, min(int((time.time() - started) * 1000), limit))
     correct = option == current["answer_index"]
@@ -715,7 +801,10 @@ def quiz_powerup():
         or quiz.get("started_at") is None
     ):
         return jsonify({"error": "Power-up not available."}), 409
-    current = quiz["questions"][quiz["index"]]
+    try:
+        current = quiz["questions"][quiz["index"]]
+    except (IndexError, KeyError, TypeError):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
     counts = quiz.get("powerup_counts", {})
     counts[kind] = counts.get(kind, 0) + 1
     quiz["powerup_counts"] = counts
@@ -811,24 +900,63 @@ def _refresh_game_status(game):
     now = time.time()
     if game.status in ("finished", "cancelled"):
         return game
-    if now >= (game.expires_at or 0):
+    try:
+        expires = float(game.expires_at or 0)
+    except (TypeError, ValueError):
+        expires = 0
+    try:
+        starts = float(game.starts_at or 0)
+    except (TypeError, ValueError):
+        starts = 0
+    if now >= expires:
         game.status = "finished"
         db.session.commit()
-    elif now >= (game.starts_at or 0) and game.status == "lobby":
+    elif now >= starts and game.status == "lobby":
         game.status = "active"
         db.session.commit()
     return game
+
+
+def _expire_stale_games():
+    """Expire every stale lobby/active row (prevents ghost lobbies)."""
+    now = time.time()
+    try:
+        stale = GameSession.query.filter(
+            GameSession.status.in_(["lobby", "active"])  # type: ignore[attr-defined]
+        ).all()
+    except Exception:
+        return
+    dirty = False
+    for g in stale:
+        try:
+            expires = float(g.expires_at or 0)
+            starts = float(g.starts_at or 0)
+        except (TypeError, ValueError):
+            continue
+        if now >= expires and g.status != "finished":
+            g.status = "finished"
+            dirty = True
+        elif now >= starts and g.status == "lobby":
+            g.status = "active"
+            dirty = True
+    if dirty:
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 
 def _get_live_game():
     """
     Return the current lobby/active game, or None.
 
-    Refreshes the latest lobby/active row by wall-clock before returning.
+    Refreshes all lobby/active rows by wall-clock before returning the
+    latest still-live one (older ghosts stay finished).
 
     :return: The live GameSession, or None when no lobby is active.
     :rtype: GameSession or None
     """
+    _expire_stale_games()
     game = (
         GameSession.query.filter(GameSession.status.in_(["lobby", "active"]))  # type: ignore[attr-defined] -- SQLAlchemy column, Pylance sees str from __init__
         .order_by(GameSession.id.desc())
@@ -836,7 +964,7 @@ def _get_live_game():
     )
     if game is None:
         return None
-    return _refresh_game_status(game)
+    return game
 
 
 def _game_to_dict(game):
@@ -876,14 +1004,20 @@ def game_start():
     :rtype: flask.Response
     """
     payload = request.get_json(silent=True) or {}
-    try:
-        num = int(
-            payload.get("num_questions")
-            or getattr(current_user, "default_num_questions", None)
-            or 10
-        )
-    except (TypeError, ValueError):
+    raw_num = payload.get("num_questions")
+    if raw_num is None:
+        raw_num = getattr(current_user, "default_num_questions", None)
+    if raw_num is None or raw_num == "" or raw_num == 0:
         num = 10
+    elif isinstance(raw_num, bool):
+        num = 10
+    else:
+        try:
+            if isinstance(raw_num, float):
+                raise ValueError("float")
+            num = int(raw_num)
+        except (TypeError, ValueError):
+            num = 10
     num = max(1, min(num, MAX_QUIZ_QUESTIONS))
     difficulty = (
         payload.get("difficulty")
@@ -898,11 +1032,27 @@ def game_start():
     powerups_enabled = payload.get("powerups_enabled", True)
     if not isinstance(powerups_enabled, bool):
         powerups_enabled = True
-    try:
-        lobby_seconds = int(payload.get("lobby_seconds", DEFAULT_LOBBY_SECONDS))
-    except (TypeError, ValueError):
+    raw_lobby = payload.get("lobby_seconds", DEFAULT_LOBBY_SECONDS)
+    if isinstance(raw_lobby, bool):
         lobby_seconds = DEFAULT_LOBBY_SECONDS
+    else:
+        try:
+            if isinstance(raw_lobby, float):
+                raise ValueError("float")
+            lobby_seconds = int(raw_lobby)
+        except (TypeError, ValueError):
+            lobby_seconds = DEFAULT_LOBBY_SECONDS
     lobby_seconds = max(MIN_LOBBY_SECONDS, min(lobby_seconds, MAX_LOBBY_SECONDS))
+
+    # LAN spam guard: one lobby per 5s per user (tests exempt).
+    try:
+        from flask import current_app as _ca
+
+        _testing = bool(_ca.config.get("TESTING"))
+    except Exception:
+        _testing = False
+    if not _testing and _rate_limited(f"start:{current_user.id}", limit=1, window_s=5):
+        return jsonify({"error": "Slow down. Wait a few seconds."}), 429
 
     existing = _get_live_game()
     if existing is not None and existing.status in ("lobby", "active"):
@@ -1024,32 +1174,58 @@ def game_events():
         :return: Generator yielding SSE-formatted snapshot/update/end events.
         :rtype: collections.abc.Generator
         """
-        last = None
-        yield "event: snapshot\ndata: %s\n\n" % json.dumps(_snapshot())
-        last = json.dumps(_snapshot(), sort_keys=True)
-        idle = 0
-        while True:
-            time.sleep(2)
-            snap = _snapshot()
-            encoded = json.dumps(snap, sort_keys=True)
-            if encoded != last:
-                last = encoded
-                yield "event: update\ndata: %s\n\n" % json.dumps(snap)
-                idle = 0
-                if snap.get("type") in ("game-none",):
+        def _dedup_key(snap):
+            # Countdown ms changes every second: exclude it from dedup so
+            # we don't spam updates; the 1s JS ticker recomputes locally.
+            return json.dumps(
+                {k: v for k, v in snap.items() if k != "starts_in_ms"},
+                sort_keys=True,
+            )
+
+        try:
+            first = _snapshot()
+            yield "event: snapshot\ndata: %s\n\n" % json.dumps(first)
+            last = _dedup_key(first)
+            idle = 0
+            # Initial terminal snapshot ends immediately (finished test).
+            if first.get("type") == "game-none":
+                yield "event: end\ndata: {}\n\n"
+                return
+            while True:
+                time.sleep(2)
+                snap = _snapshot()
+                encoded = _dedup_key(snap)
+                if encoded != last:
+                    last = encoded
+                    yield "event: update\ndata: %s\n\n" % json.dumps(snap)
+                    idle = 0
+                    if snap.get("type") in ("game-none",):
+                        yield "event: end\ndata: {}\n\n"
+                        break
+                else:
+                    idle += 1
+                    if idle % 7 == 0:
+                        yield ": heartbeat\n\n"
+                game = _get_live_game()
+                if game is None:
+                    # Already emitted end via game-none above; avoid double.
+                    break
+                try:
+                    exp = float(game.expires_at or 0)
+                except (TypeError, ValueError):
+                    exp = 0
+                if time.time() > exp + 30:
                     yield "event: end\ndata: {}\n\n"
                     break
-            else:
-                idle += 1
-                if idle % 7 == 0:
-                    yield ": heartbeat\n\n"
-            game = _get_live_game()
-            if game is None:
+        except GeneratorExit:
+            # Browser disconnected: stop DB polling, free the worker.
+            return
+        except Exception:
+            try:
                 yield "event: end\ndata: {}\n\n"
-                break
-            if time.time() > (game.expires_at or 0) + 30:
-                yield "event: end\ndata: {}\n\n"
-                break
+            except Exception:
+                pass
+            return
 
     return Response(
         stream_with_context(generate()),

@@ -14,15 +14,15 @@
 </div>
 <script>
     window.I18N_GAME = {
-        startingIn: "{{ _('Game starting in') }}",
-        waiting: "{{ _('Waiting for players…') }}",
-        live: "{{ _('Game live — opening…') }}",
-        cancelled: "{{ _('Game cancelled') }}",
-        waitingTapJoin: "{{ _('A family game is waiting — tap Join!') }}",
-        remindersOff: "{{ _('Game reminders off — join from homepage') }}",
-        dndNote: "{{ _('Do not disturb respected') }}",
-        join: "{{ _('Join game') }}",
-        dismiss: "{{ _('Dismiss') }}"
+        startingIn: {{ _('Game starting in')|tojson }},
+        waiting: {{ _('Waiting for players…')|tojson }},
+        live: {{ _('Game live — opening…')|tojson }},
+        cancelled: {{ _('Game cancelled')|tojson }},
+        waitingTapJoin: {{ _('A family game is waiting — tap Join!')|tojson }},
+        remindersOff: {{ _('Game reminders off — join from homepage')|tojson }},
+        dndNote: {{ _('Do not disturb respected')|tojson }},
+        join: {{ _('Join game')|tojson }},
+        dismiss: {{ _('Dismiss')|tojson }}
     };
 </script>
 <script src="{{ url_for('static', filename='game_notify.js') }}"></script>

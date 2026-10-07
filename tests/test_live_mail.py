@@ -1,19 +1,21 @@
 """Live SMTP test — sends a REAL password-reset email to a real user.
 
-Runs with the normal suite (no gate): every run proves end-to-end
-delivery through the configured provider. Uses an isolated temp DB;
-the only real-world side effect is one email to the verified sender
-address from .env (recipient = sender). Fails loudly if mail creds
-are missing.
+Skipped automatically when MAIL_SERVER/MAIL_PASSWORD are missing;
+runs live when creds are present (user approved credit spend).
+Uses an isolated temp DB; the only real-world side effect is one email
+to the verified sender address from .env (recipient = sender).
 """
 
 import base64
 import json
+import os
 import time
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from email.utils import parseaddr
+
+import pytest
 
 MJ_MESSAGES_URL = "https://api.mailjet.com/v3/REST/message"
 DELIVERED_STATUSES = {"sent", "opened", "clicked"}
@@ -92,6 +94,11 @@ def test_forgot_password_sends_real_email_to_user(tmp_path):
 
     :param tmp_path: The tmp_path fixture.
     """
+    # Check both canonical and legacy dash-names (.env uses SMTP-SERVER etc).
+    has_server = bool(os.getenv("MAIL_SERVER") or os.getenv("SMTP-SERVER"))
+    has_pass = bool(os.getenv("MAIL_PASSWORD"))
+    if not has_server or not has_pass:
+        pytest.skip("MAIL_SERVER/MAIL_PASSWORD not configured; live mail skipped.")
     from app import create_app, db, user_datastore
 
     flask_app = create_app(

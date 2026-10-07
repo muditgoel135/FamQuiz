@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>FamQuiz</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
@@ -156,10 +157,11 @@
 
     <script>
         window.I18N = {
-            couldNotStart: "{{ _('Could not start the game.') }}",
-            quizFailed: "{{ _('Quiz service failed (') }}",
-            liveGameExists: "{{ _('A family game is waiting — tap Join!') }}"
+            couldNotStart: {{ _('Could not start the game.')|tojson }},
+            quizFailed: {{ _('Quiz service failed (')|tojson }},
+            liveGameExists: {{ _('A family game is waiting — tap Join!')|tojson }}
         };
+        window.CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.content || "";
     </script>
     <script>
         (function () {
@@ -170,10 +172,19 @@
             var waitInput = document.getElementById('home-wait');
             var errBox = document.getElementById('home-error');
             if (!btn) return;
-            function showError(msg) {
+            function showError(msg, fields) {
                 if (!errBox) return;
+                if (fields && typeof fields === 'object') {
+                    var parts = Object.keys(fields).map(function (k) { return k + ': ' + fields[k]; });
+                    if (parts.length) msg += ' (' + parts.join('; ') + ')';
+                }
                 errBox.textContent = msg;
                 errBox.hidden = false;
+            }
+            function csrfHeaders() {
+                var h = { 'Content-Type': 'application/json' };
+                if (window.CSRF_TOKEN) h['X-CSRFToken'] = window.CSRF_TOKEN;
+                return h;
             }
             btn.addEventListener('click', function () {
                 if (errBox) errBox.hidden = true;
@@ -189,7 +200,7 @@
                 btn.disabled = true;
                 fetch('{{ url_for("game_start") }}', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: csrfHeaders(),
                     body: JSON.stringify({ num_questions: num, difficulty: difficulty, powerups_enabled: powerups, lobby_seconds: wait })
                 }).then(function (resp) {
                     if (!resp.ok) {
@@ -200,16 +211,20 @@
                                 window.location.href = '{{ url_for("gameplay") }}';
                                 throw new Error(window.I18N.liveGameExists);
                             }
-                            throw new Error(body.error || (window.I18N.quizFailed + resp.status + ').'));
+                            var msg = body.error || (window.I18N.quizFailed + resp.status + ').');
+                            var err = new Error(msg);
+                            err.fields = body.fields;
+                            throw err;
                         });
                     }
                     return resp.json();
                 }).then(function () {
                     if (window.FamQuizNotify) window.FamQuizNotify.refresh();
-                    btn.disabled = false;
+                    // Go straight into the shared lobby game.
+                    window.location.href = '{{ url_for("gameplay") }}';
                 }).catch(function (err) {
                     if (err && err.message === window.I18N.liveGameExists) return;
-                    showError(err.message || window.I18N.couldNotStart);
+                    showError(err.message || window.I18N.couldNotStart, err.fields);
                     btn.disabled = false;
                 });
             });

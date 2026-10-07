@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>FamQuiz - {{ _('Guide') }}</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
@@ -31,6 +32,15 @@
                 <li>{{ _('Open Settings from the homepage.') }}</li>
                 <li>{{ _('Update profile, theme, and language.') }}</li>
                 <li>{{ _('Save — quiz questions use your language.') }}</li>
+            </ol>
+        </section>
+        <section class="home-card" aria-label="LAN + Tailscale">
+            <h2 class="home-heading">Play together on LAN + Tailscale</h2>
+            <ol class="mb-0">
+                <li>Host runs <code>python app.py</code> (binds <code>0.0.0.0:5000</code>, debug off).</li>
+                <li><strong>Same Wi-Fi (LAN):</strong> join <code>http://&lt;host-lan-ip&gt;:5000</code> (find via <code>ipconfig</code> / <code>ifconfig</code>). Allow Private firewall, block Public.</li>
+                <li><strong>Far away (Tailscale):</strong> install Tailscale on all devices, join same tailnet, then open <code>http://&lt;host-tailscale-ip&gt;:5000</code> (or MagicDNS name). No port-forwarding.</li>
+                <li>Start a game from the homepage — pick questions, difficulty, waiting time (10–300s). Everyone gets a banner + auto-open at live.</li>
             </ol>
         </section>
     </main>

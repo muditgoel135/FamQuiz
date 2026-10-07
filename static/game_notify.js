@@ -30,11 +30,16 @@
     if (!authenticated) return;
 
     var current = null; // last game dict
-    var dismissedFor = null; // "id:status" the user dismissed
-    var notifiedFor = null; // "id:status" already notified
+    var dismissedFor = null; // game id the user dismissed (both lobby+active)
+    var notifiedFor = null; // game id already notified
     var pollTimer = null;
     var countdownTimer = null;
     var es = null;
+
+    function csrfToken() {
+        var m = document.querySelector('meta[name="csrf-token"]');
+        return m ? m.content : "";
+    }
 
     function fmtMs(ms) {
         var s = Math.max(0, Math.ceil(ms / 1000));
@@ -44,7 +49,14 @@
     }
 
     function key(game) {
-        return game ? game.id + ":" + game.status : null;
+        return game ? String(game.id) : null;
+    }
+
+    function liveMs(game) {
+        // Compute from starts_at wall-clock so the 1s ticker moves.
+        // starts_at is epoch seconds from the server.
+        if (!game || typeof game.starts_at !== "number") return game ? (game.starts_in_ms || 0) : 0;
+        return Math.max(0, Math.round((game.starts_at * 1000) - Date.now()));
     }
 
     function show(game) {
@@ -74,7 +86,7 @@
             return;
         }
         if (current.status === "lobby") {
-            countEl.textContent = t("startingIn", "Game starting in") + " " + fmtMs(current.starts_in_ms);
+            countEl.textContent = t("startingIn", "Game starting in") + " " + fmtMs(liveMs(current));
         } else if (current.status === "active") {
             countEl.textContent = t("live", "Game live — opening…");
         } else {
@@ -107,10 +119,17 @@
     function handleGame(game) {
         if (!game) {
             current = null;
+            // Keep dismissed id so a cancelled game stays dismissed.
             box.hidden = true;
             return;
         }
-        var changed = key(game) !== key(current);
+        // Dismiss is per-game id: lobby dismiss also covers its active phase.
+        if (dismissedFor && dismissedFor === key(game)) {
+            current = game;
+            box.hidden = true;
+            return;
+        }
+        var changed = !current || key(game) !== key(current) || current.status !== game.status;
         show(game);
         if (changed) maybeNotify(game);
         maybeRedirect(game);
@@ -182,8 +201,13 @@
 
     if (joinBtn) {
         joinBtn.addEventListener("click", function () {
-            fetch(joinUrl, { method: "POST" })
-                .then(function () {
+            var headers = {};
+            var tok = csrfToken();
+            if (tok) headers["X-CSRFToken"] = tok;
+            fetch(joinUrl, { method: "POST", headers: headers })
+                .then(function (resp) {
+                    // 404 = lobby expired between banner and click: still go
+                    // to gameplay which will show the friendly no-quiz state.
                     window.location.href = gameplayUrl;
                 })
                 .catch(function () {

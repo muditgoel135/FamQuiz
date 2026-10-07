@@ -126,6 +126,11 @@ BASE_CONFIG = {
     "SECURITY_LOGOUT_METHODS": ["GET", "POST"],
     # Don't require DNS/MX lookup for emails (offline dev + example.com in tests).
     "SECURITY_EMAIL_VALIDATOR_ARGS": {"check_deliverability": False},
+    # Local LAN hardening (keeps 0.0.0.0 sharing, no production TLS).
+    "SESSION_COOKIE_HTTPONLY": True,
+    "SESSION_COOKIE_SAMESITE": "Lax",
+    "REMEMBER_COOKIE_HTTPONLY": True,
+    "REMEMBER_COOKIE_SAMESITE": "Lax",
 }
 
 # Applied when TESTING is enabled so test_client POSTs don't need tokens.
@@ -367,12 +372,19 @@ def build_quiz_messages(user, num_questions, difficulty=None):
     :rtype: list
     """
 
-    subject = user.favorite_subject or "general knowledge"
+    subject = (user.favorite_subject or "general knowledge").strip()
     difficulty = (difficulty or user.difficulty_level or "medium").strip().lower()
     if difficulty not in DIFFICULTY_LEVELS:
         difficulty = "medium"
-    language = user.language or "English"
-    grade = user.grade_occupation or "all ages"
+    language = (user.language or "English").strip()
+    grade = (user.grade_occupation or "all ages").strip()
+    # Sanitize free-text grade/subject for prompt injection: single line, capped.
+    def _one_line(text, limit=80):
+        return " ".join(str(text).split())[:limit] or "general"
+
+    subject = _one_line(subject)
+    grade = _one_line(grade)
+    language = _one_line(language, 20)
     # Finalised plan: Mandarin Chinese means Simplified (zh_Hans).
     extra = (
         " Use Simplified Chinese."
@@ -412,11 +424,21 @@ def strip_code_fences(content):
         return content
     text = content.strip()
     if text.startswith("```"):
+        # Single-line fence: ```json {...} ``` -> extract inner JSON.
+        if "\n" not in text:
+            inner = text[3:].strip()
+            # Drop optional language tag (e.g. json).
+            if inner.lower().startswith("json"):
+                inner = inner[4:].strip()
+            if inner.endswith("```"):
+                inner = inner[:-3].strip()
+            return inner
         lines = text.splitlines()[1:]
         if lines and lines[-1].strip().rstrip() == "```":
             lines = lines[:-1]
         elif lines and lines[-1].strip().endswith("```"):
-            lines[-1] = lines[-1].strip()[: -len("```")]
+            stripped = lines[-1].strip()
+            lines[-1] = stripped[: -len("```")].strip()
         text = "\n".join(lines).strip()
     return text
 
@@ -432,18 +454,33 @@ def resolve_answer_index(item, options):
     :rtype: int or None
     """
 
-    answer = item.get("answer_index", item.get("answer"))
+    answer = item.get("answer_index")
+    # Explicit None falls back to 'answer' text (some models send both).
+    if answer is None:
+        answer = item.get("answer")
     if isinstance(answer, bool):
         return None
 
     if isinstance(answer, int):
         return answer if 0 <= answer <= 3 else None
 
+    # Float like 1.0 from sloppy models: accept whole values only.
+    if isinstance(answer, float):
+        if answer.is_integer() and 0 <= int(answer) <= 3:
+            return int(answer)
+        return None
+
     if isinstance(answer, str) and answer.strip():
+        text = answer.strip()
+        # Numeric "1" / letter "B"/"b" shorthands.
+        if text in ("0", "1", "2", "3"):
+            return int(text)
+        if len(text) == 1 and text.upper() in ("A", "B", "C", "D"):
+            return "ABCD".index(text.upper())
         matches = [
             i
             for i, o in enumerate(options)
-            if o.strip().lower() == answer.strip().lower()
+            if o.strip().lower() == text.lower()
         ]
 
         if len(matches) == 1:
@@ -502,10 +539,14 @@ def parse_quiz_content(content):
 
         if answer_index is None:
             continue
+        cleaned = [o.strip() for o in options]
+        # Duplicate options make 50:50 / grading ambiguous — drop them.
+        if len({o.lower() for o in cleaned}) != 4:
+            continue
 
         entry = {
             "question": question.strip(),
-            "options": [o.strip() for o in options],
+            "options": cleaned,
             "answer_index": answer_index,
         }
         questions.append(entry)
@@ -550,7 +591,10 @@ def _public_state(quiz):
     """
 
     index = quiz.get("index", 0)
-    question = quiz["questions"][index]
+    questions = quiz.get("questions") or []
+    if not isinstance(index, int) or not 0 <= index < len(questions):
+        raise IndexError("Quiz index out of range.")
+    question = questions[index]
     return {
         "question": question["question"],
         "options": question["options"],
@@ -591,7 +635,14 @@ def generate_questions(user, num_questions, difficulty=None):
     content = getattr(message, "content", None)
     if content is None and isinstance(response, dict):
         content = response.get("message", {}).get("content")
-    return parse_quiz_content(content)
+    questions = parse_quiz_content(content)
+    # Truncate to what was asked: prevents 50-question cookie bloat when
+    # the model ignores the count. Cookie stays small for family LAN.
+    try:
+        want = max(1, min(int(num_questions or 1), MAX_QUIZ_QUESTIONS))
+    except (TypeError, ValueError):
+        want = len(questions)
+    return questions[:want]
 
 
 db = SQLAlchemy()
@@ -744,9 +795,14 @@ def _recipient_locale(recipient, context_user=None):
         if locale in SUPPORTED_LOCALES:
             return locale
     try:
+        from email.utils import parseaddr as _parseaddr
+
         addr = recipient[0] if isinstance(recipient, (list, tuple)) else recipient
         if isinstance(addr, str) and "@" in addr:
-            found = User.query.filter_by(email=addr).one_or_none()
+            # Handle "Name <a@b>" as well as bare addresses.
+            _, parsed = _parseaddr(addr)
+            lookup = parsed or addr
+            found = User.query.filter_by(email=lookup).one_or_none()
             if found is not None:
                 locale = LANGUAGE_TO_LOCALE.get((found.language or "").strip())
                 if locale in SUPPORTED_LOCALES:
@@ -811,15 +867,31 @@ class TranslatedMailUtil(MailUtil):
         :param kwargs: Extra context; may include ``user`` for locale lookup.
         :return: The result of the parent ``send_mail`` call.
         """
+        from flask import g as _g
+
+        sentinel = object()
+        try:
+            previous = _g.get("email_locale", sentinel)
+        except Exception:
+            previous = sentinel
         try:
             locale = _recipient_locale(recipient, kwargs.get("user"))
             subject = translate(subject, locale)
-            g.email_locale = locale
-        except Exception:
-            pass
-        return super().send_mail(
-            template, subject, recipient, sender, body, html, **kwargs
-        )
+            try:
+                _g.email_locale = locale
+            except Exception:
+                pass
+            return super().send_mail(
+                template, subject, recipient, sender, body, html, **kwargs
+            )
+        finally:
+            try:
+                if previous is sentinel:
+                    _g.pop("email_locale", None)
+                else:
+                    _g.email_locale = previous
+            except Exception:
+                pass
 
 
 security = Security(
@@ -891,6 +963,18 @@ def create_app(config_overrides=None):
         if config_overrides:
             app.config.update(config_overrides)
 
+    # Warn on default secrets (local LAN shares the repo publicly).
+    # Tests use TESTING=True and are exempt from the fail-fast.
+    _secret = app.config.get("SECRET_KEY", "")
+    _salt = app.config.get("SECURITY_PASSWORD_SALT", "")
+    if (str(_secret).startswith("supersecret") or str(_salt).startswith("supersecret")) and not app.config.get(
+        "TESTING"
+    ):
+        app.logger.warning(
+            "SECRET_KEY/SECURITY_PASSWORD_SALT are defaults; "
+            "set long random values in .env for LAN use."
+        )
+
     # Don't crash when SMTP creds are missing (local dev): suppress sending
     # and log a warning. Flask-Security will still flash the generic
     # "email sent if account exists" message.
@@ -906,6 +990,28 @@ def create_app(config_overrides=None):
     security.init_app(app, user_datastore)
     mail.init_app(app)
 
+    # CSRF for JSON fetch (tests disable via WTF_CSRF_ENABLED=False).
+    try:
+        from flask_wtf.csrf import CSRFProtect
+
+        _csrf = CSRFProtect()
+        _csrf.init_app(app)
+        # Flask-Security forms already carry hidden_tag(); exempt only
+        # the SSE stream (GET) is automatic. JSON POSTs must send
+        # X-CSRFToken (see base templates). Exempt nothing here so
+        # production is protected; tests bypass via disabled flag.
+        app.extensions["famquiz_csrf"] = _csrf
+    except Exception as exc:  # pragma: no cover - missing optional wiring
+        app.logger.warning("CSRFProtect not initialised: %s", exc)
+
+    @app.after_request
+    def _security_headers(resp):
+        # Local LAN: no HSTS (http), but deny framing + nosniff.
+        resp.headers.setdefault("X-Frame-Options", "DENY")
+        resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+        resp.headers.setdefault("Referrer-Policy", "same-origin")
+        return resp
+
     from routes import register_routes
 
     register_routes(app)
@@ -920,4 +1026,5 @@ app = create_app()
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+    # Keep 0.0.0.0 for LAN + Tailscale sharing; never debug on LAN (RCE).
+    app.run(debug=False, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
