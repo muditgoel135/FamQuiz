@@ -20,15 +20,30 @@ DELIVERED_STATUSES = {"sent", "opened", "clicked"}
 
 
 def _sender_address(flask_app):
-    """Recipient = sender, so the test tracks whatever .env configures."""
+    """Return the sender address as the live-mail recipient.
+
+    Recipient = sender, so the test tracks whatever .env configures.
+
+    :param flask_app: The Flask app with mail config.
+    :return: The sender email address.
+    :rtype: str
+    """
     _, address = parseaddr(flask_app.config.get("MAIL_DEFAULT_SENDER", ""))
     assert address and "@" in address, "MAIL_DEFAULT_SENDER not configured"
     return address
 
 
 def _mailjet_status(api_key, secret, recipient, sent_after, timeout=120):
-    """Poll Mailjet's Messages API until our message shows up. Returns
-    (ok, detail): ok=True only if Mailjet reports a delivered status."""
+    """Poll Mailjet's Messages API until our message shows up.
+
+    :param api_key: The Mailjet API key.
+    :param secret: The Mailjet API secret.
+    :param recipient: The recipient address to search for.
+    :param sent_after: Only consider messages arriving after this time.
+    :param timeout: Maximum seconds to poll.
+    :return: Tuple (ok, detail); ok=True only if Mailjet reports a delivered status.
+    :rtype: tuple
+    """
     token = base64.b64encode(f"{api_key}:{secret}".encode()).decode()
     deadline = time.time() + timeout
     last_detail = "no messages returned yet"
@@ -58,6 +73,12 @@ def _mailjet_status(api_key, secret, recipient, sent_after, timeout=120):
 
 
 def _arrived_at(message):
+    """Parse a Mailjet message ArrivedAt to UTC datetime.
+
+    :param message: The message fixture.
+    :return: Helper value for tests.
+    :rtype: object
+    """
     try:
         return datetime.fromisoformat(
             message.get("ArrivedAt", "").replace("Z", "+00:00")
@@ -67,6 +88,10 @@ def _arrived_at(message):
 
 
 def test_forgot_password_sends_real_email_to_user(tmp_path):
+    """Verify forgot password sends real email to user.
+
+    :param tmp_path: The tmp_path fixture.
+    """
     from app import create_app, db, user_datastore
 
     flask_app = create_app(

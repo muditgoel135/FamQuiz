@@ -35,6 +35,8 @@
         </ul>
     </nav>
 
+    {% include 'game_notify.html' %}
+
     <main class="home-main d-flex flex-column gap-3">
         <div class="home-top row g-3 mx-0">
             <section class="col-12 col-lg-6 ps-0 pe-0 pe-lg-2" aria-label="{{ _('Leaderboard') }}">
@@ -97,6 +99,11 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="home-option d-flex flex-wrap align-items-center gap-2">
+                        <label for="home-wait" class="home-label home-serif">{{ _('Waiting time:') }}</label>
+                        <input type="number" id="home-wait" name="lobby_seconds" class="home-input"
+                            value="300" min="10" max="300" step="10" aria-label="{{ _('Waiting time:') }}">
+                    </div>
                 </div>
             </section>
         </div>
@@ -150,7 +157,8 @@
     <script>
         window.I18N = {
             couldNotStart: "{{ _('Could not start the game.') }}",
-            quizFailed: "{{ _('Quiz service failed (') }}"
+            quizFailed: "{{ _('Quiz service failed (') }}",
+            liveGameExists: "{{ _('A family game is waiting — tap Join!') }}"
         };
     </script>
     <script>
@@ -159,6 +167,7 @@
             var numInput = document.getElementById('home-num');
             var diffSelect = document.getElementById('home-difficulty');
             var powerInput = document.getElementById('home-powerups');
+            var waitInput = document.getElementById('home-wait');
             var errBox = document.getElementById('home-error');
             if (!btn) return;
             function showError(msg) {
@@ -175,21 +184,31 @@
                 var num = parseInt(numInput ? numInput.value : '10', 10) || 10;
                 var difficulty = diffSelect ? diffSelect.value : '';
                 var powerups = powerInput ? !!powerInput.checked : true;
+                var wait = parseInt(waitInput ? waitInput.value : '300', 10) || 300;
+                wait = Math.max(10, Math.min(wait, 300));
                 btn.disabled = true;
-                fetch('{{ url_for("quiz_generate") }}', {
+                fetch('{{ url_for("game_start") }}', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ num_questions: num, difficulty: difficulty, powerups_enabled: powerups })
+                    body: JSON.stringify({ num_questions: num, difficulty: difficulty, powerups_enabled: powerups, lobby_seconds: wait })
                 }).then(function (resp) {
                     if (!resp.ok) {
                         return resp.json().catch(function () { return {}; }).then(function (body) {
+                            // 409 = a lobby is already live: join it instead.
+                            if (resp.status === 409) {
+                                if (window.FamQuizNotify) window.FamQuizNotify.refresh();
+                                window.location.href = '{{ url_for("gameplay") }}';
+                                throw new Error(window.I18N.liveGameExists);
+                            }
                             throw new Error(body.error || (window.I18N.quizFailed + resp.status + ').'));
                         });
                     }
                     return resp.json();
                 }).then(function () {
-                    window.location.href = '{{ url_for("gameplay") }}';
+                    if (window.FamQuizNotify) window.FamQuizNotify.refresh();
+                    btn.disabled = false;
                 }).catch(function (err) {
+                    if (err && err.message === window.I18N.liveGameExists) return;
                     showError(err.message || window.I18N.couldNotStart);
                     btn.disabled = false;
                 });

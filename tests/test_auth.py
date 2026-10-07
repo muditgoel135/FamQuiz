@@ -9,12 +9,21 @@ from app import User, db
 
 class TestSignup:
     def test_register_page_loads(self, client):
+        """Verify register page loads.
+
+        :param client: The client fixture.
+        """
         resp = client.get("/register")
         assert resp.status_code == 200
         assert b'name="register_user_form"' in resp.data
         assert b"Sign up" in resp.data
 
     def test_signup_success_redirects_home_and_creates_user(self, client, app):
+        """Verify signup success redirects home and creates user.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        """
         resp = client.post(
             "/register",
             data={
@@ -34,6 +43,10 @@ class TestSignup:
             assert user.password != "correct-horse-123"
 
     def test_signup_logs_user_in(self, client):
+        """Verify signup logs user in.
+
+        :param client: The client fixture.
+        """
         client.post(
             "/register",
             data={
@@ -46,6 +59,12 @@ class TestSignup:
         assert client.get("/gameplay").status_code == 200
 
     def test_signup_duplicate_email_rejected(self, client, app, existing_user):
+        """Verify signup duplicate email rejected.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        :param existing_user: The existing_user fixture.
+        """
         resp = client.post(
             "/register",
             data={
@@ -59,6 +78,11 @@ class TestSignup:
             assert User.query.filter_by(email=existing_user["email"]).count() == 1
 
     def test_signup_password_mismatch_rejected(self, client, app):
+        """Verify signup password mismatch rejected.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        """
         resp = client.post(
             "/register",
             data={
@@ -72,6 +96,11 @@ class TestSignup:
             assert User.query.filter_by(email="mismatch@example.com").count() == 0
 
     def test_signup_invalid_email_rejected(self, client, app):
+        """Verify signup invalid email rejected.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        """
         resp = client.post(
             "/register",
             data={
@@ -92,12 +121,21 @@ class TestSignup:
 
 class TestLogin:
     def test_login_page_loads(self, client):
+        """Verify login page loads.
+
+        :param client: The client fixture.
+        """
         resp = client.get("/login")
         assert resp.status_code == 200
         assert b'name="login_user_form"' in resp.data
         assert b"Log in" in resp.data
 
     def test_login_success_redirects_home(self, client, existing_user):
+        """Verify login success redirects home.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         resp = client.post(
             "/login",
             data={
@@ -112,6 +150,11 @@ class TestLogin:
         assert client.get("/gameplay").status_code == 200
 
     def test_login_wrong_password_rejected(self, client, existing_user):
+        """Verify login wrong password rejected.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         resp = client.post(
             "/login",
             data={"email": existing_user["email"], "password": "wrong-pass-123"},
@@ -120,6 +163,10 @@ class TestLogin:
         assert client.get("/gameplay").status_code == 302
 
     def test_login_unknown_email_rejected(self, client):
+        """Verify login unknown email rejected.
+
+        :param client: The client fixture.
+        """
         resp = client.post(
             "/login",
             data={"email": "nobody@example.com", "password": "correct-horse-123"},
@@ -128,11 +175,20 @@ class TestLogin:
         assert client.get("/gameplay").status_code == 302
 
     def test_gameplay_requires_login_and_honours_next(self, client):
+        """Verify gameplay requires login and honours next.
+
+        :param client: The client fixture.
+        """
         resp = client.get("/gameplay", follow_redirects=False)
         assert resp.status_code == 302
         assert resp.headers["Location"].startswith("/login?next=")
 
     def test_logout_clears_session(self, client, existing_user):
+        """Verify logout clears session.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         client.post(
             "/login",
             data={

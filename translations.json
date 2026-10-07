@@ -139,7 +139,18 @@
     "Your password has been reset.": "Tu contraseña se ha restablecido.",
     "Your password has been changed.": "Tu contraseña se ha cambiado.",
     "Your password has been reset": "Tu contraseña se ha restablecido.",
-    "Your password has been changed": "Tu contraseña se ha cambiado."
+    "Your password has been changed": "Tu contraseña se ha cambiado.",
+    "Game starting in": "El juego empieza en",
+    "Join game": "Unirse al juego",
+    "Dismiss": "Descartar",
+    "Waiting for players…": "Esperando a los jugadores…",
+    "Game live — opening…": "Juego en curso — abriendo…",
+    "Game cancelled": "Juego cancelado",
+    "A family game is waiting — tap Join!": "¡Hay un juego familiar en espera — pulsa Unirse!",
+    "Game reminders off — join from homepage": "Recordatorios desactivados — únete desde el inicio",
+    "Do not disturb respected": "No molestar respetado — sin apertura automática",
+    "Waiting time:": "Tiempo de espera:",
+    "Wait for the countdown — the game opens automatically.": "Espera la cuenta atrás — el juego se abre automáticamente."
   },
   "hi": {
     "How to use": "उपयोग कैसे करें",
@@ -280,7 +291,18 @@
     "Your password has been reset.": "आपका पासवर्ड रीसेट कर दिया गया है।",
     "Your password has been changed.": "आपका पासवर्ड बदल दिया गया है।",
     "Your password has been reset": "आपका पासवर्ड रीसेट कर दिया गया है।",
-    "Your password has been changed": "आपका पासवर्ड बदल दिया गया है।"
+    "Your password has been changed": "आपका पासवर्ड बदल दिया गया है।",
+    "Game starting in": "खेल शुरू होने में",
+    "Join game": "खेल में शामिल हों",
+    "Dismiss": "अनदेखा करें",
+    "Waiting for players…": "खिलाड़ियों की प्रतीक्षा हो रही है…",
+    "Game live — opening…": "खेल शुरू — खुल रहा है…",
+    "Game cancelled": "खेल रद्द कर दिया गया",
+    "A family game is waiting — tap Join!": "एक पारिवारिक खेल प्रतीक्षा कर रहा है — शामिल हों दबाएँ!",
+    "Game reminders off — join from homepage": "खेल अनुस्मारक बंद हैं — होमपेज से शामिल हों",
+    "Do not disturb respected": "परेशान न करें का सम्मान किया गया — स्वतः नहीं खुलेगा",
+    "Waiting time:": "प्रतीक्षा समय:",
+    "Wait for the countdown — the game opens automatically.": "उलटी गिनती की प्रतीक्षा करें — खेल अपने आप खुल जाएगा।"
   },
   "zh_Hans": {
     "How to use": "使用方法",
@@ -421,6 +443,17 @@
     "Your password has been reset.": "你的密码已重置。",
     "Your password has been changed.": "你的密码已修改。",
     "Your password has been reset": "你的密码已重置。",
-    "Your password has been changed": "你的密码已修改。"
+    "Your password has been changed": "你的密码已修改。",
+    "Game starting in": "游戏还有",
+    "Join game": "加入游戏",
+    "Dismiss": "关闭",
+    "Waiting for players…": "等待玩家加入…",
+    "Game live — opening…": "游戏已开始——正在打开…",
+    "Game cancelled": "游戏已取消",
+    "A family game is waiting — tap Join!": "有一场家庭游戏在等待——点击加入！",
+    "Game reminders off — join from homepage": "游戏提醒已关闭——请从首页加入",
+    "Do not disturb respected": "已尊重请勿打扰——不会自动打开",
+    "Waiting time:": "等待时间：",
+    "Wait for the countdown — the game opens automatically.": "等待倒计时——游戏将自动打开。"
   }
 }

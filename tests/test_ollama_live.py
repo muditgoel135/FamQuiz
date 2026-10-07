@@ -38,6 +38,14 @@ requires_key = pytest.mark.skipif(
 
 
 def _profile(subject="Space", difficulty="easy", language="English"):
+    """Build a fake user profile for quiz generation.
+
+    :param subject: The subject fixture.
+    :param difficulty: The difficulty fixture.
+    :param language: The language fixture.
+    :return: Helper value for tests.
+    :rtype: object
+    """
     return SimpleNamespace(
         favorite_subject=subject,
         difficulty_level=difficulty,
@@ -47,9 +55,16 @@ def _profile(subject="Space", difficulty="easy", language="English"):
 
 
 def _generate_with_retry(user, count, attempts=4):
-    """Free-tier cloud capacity is flaky (rate limits); retry transients.
+    """Generate quiz questions, retrying transient cloud failures.
 
+    Free-tier cloud capacity is flaky (rate limits); retry transients.
     A wrong model name fails every attempt, so genuine failures still fail.
+
+    :param user: The fake user profile to personalise for.
+    :param count: The number of questions to generate.
+    :param attempts: Maximum generation attempts.
+    :return: A list of validated question dicts.
+    :rtype: list
     """
     last: Exception | None = None
     for attempt in range(attempts):
@@ -64,6 +79,11 @@ def _generate_with_retry(user, count, attempts=4):
 
 
 def _assert_valid_quiz(questions, count=1):
+    """Assert a quiz list has valid shape.
+
+    :param questions: The questions fixture.
+    :param count: The count fixture.
+    """
     assert len(questions) == count
     for q in questions:
         assert isinstance(q["question"], str) and q["question"].strip()
@@ -80,11 +100,20 @@ def _assert_valid_quiz(questions, count=1):
 class TestLiveModels:
     @pytest.mark.parametrize("model", LIVE_MODELS)
     def test_model_generates_valid_quiz(self, model, monkeypatch):
+        """Verify model generates valid quiz.
+
+        :param model: The model fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         monkeypatch.setattr(app_module, "OLLAMA_MODEL", model)
         questions = _generate_with_retry(_profile(), 1)
         _assert_valid_quiz(questions, 1)
 
     def test_personalised_subject_and_language(self, monkeypatch):
+        """Verify personalised subject and language.
+
+        :param monkeypatch: The monkeypatch fixture.
+        """
         monkeypatch.setattr(app_module, "OLLAMA_MODEL", "gpt-oss:20b")
         questions = _generate_with_retry(
             _profile(subject="Oceans", difficulty="easy", language="Hindi"), 1
@@ -95,6 +124,11 @@ class TestLiveModels:
 @requires_key
 class TestLiveRouteEndToEnd:
     def test_generate_state_answer_finish(self, client, existing_user):
+        """Verify generate state answer finish.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         client.post(
             "/login",
             data={

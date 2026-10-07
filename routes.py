@@ -1,23 +1,36 @@
-"""View functions for FamQuiz (moved out of the app factory).
+"""
+View functions for FamQuiz (moved out of the app factory).
 
 Registered via :func:`register_routes`, preserving the original endpoint
 names so ``url_for('homepage')`` etc. keep working in templates and tests.
 """
 
+import json
 import random
 import time
 from typing import Any
 
-from flask import jsonify, render_template, request, session
+from flask import (
+    Response,
+    jsonify,
+    render_template,
+    request,
+    session,
+    stream_with_context,
+)
 from flask_security import current_user, login_required
 
 from app import (
     BASE_POINTS,
+    DEFAULT_LOBBY_SECONDS,  # type: ignore
     DIFFICULTY_LEVELS,
+    GAME_EXPIRY_GRACE_SECONDS,  # type: ignore
     LANGUAGE_TO_LOCALE,
     LOCALE_TO_HTML,
     LOCALE_TO_LANGUAGE,
+    MAX_LOBBY_SECONDS,  # type: ignore
     MAX_QUIZ_QUESTIONS,
+    MIN_LOBBY_SECONDS,  # pyright: ignore[reportAttributeAccessIssue]
     POWERUP_CHANCE,
     POWERUP_KINDS,
     POWERUP_LABELS,
@@ -26,6 +39,7 @@ from app import (
     SPEED_BONUS_POINTS,
     SUPPORTED_LOCALES,
     TRANSLATIONS,
+    GameSession,  # type: ignore
     QuizConfigError,
     QuizGenerationError,
     User,
@@ -47,6 +61,12 @@ SETTINGS_STATUSES = ("Ready to play", "Do not disturb", "offline")
 
 
 def inject_theme():
+    """
+    Inject the theme CSS class for templates.
+
+    :return: Context dict with ``theme_class`` ("theme-dark" or "").
+    :rtype: dict
+    """
     try:
         dark = bool(
             current_user.is_authenticated
@@ -58,6 +78,13 @@ def inject_theme():
 
 
 def inject_i18n():
+    """
+    Inject i18n helpers and locale metadata for templates.
+
+    :return: Context dict with ``_``, ``current_locale``, ``html_lang``,
+        ``supported_locales`` and ``locale_to_language``.
+    :rtype: dict
+    """
     locale = get_locale()
     return {
         "_": _,
@@ -69,6 +96,14 @@ def inject_i18n():
 
 
 def _persist_lang_param():
+    """
+    Persist a valid ``?lang=`` query param into the session.
+
+    Runs before each request; invalid values are ignored.
+
+    :return: None.
+    :rtype: None
+    """
     try:
         arg = request.args.get("lang")
         if arg in SUPPORTED_LOCALES:
@@ -78,15 +113,26 @@ def _persist_lang_param():
 
 
 def homepage():
+    """
+    Render the homepage with leaderboard and player stats.
+
+    :return: The rendered ``index.html`` response.
+    :rtype: flask.Response
+    """
     from sqlalchemy import func as _func
 
     def _display_name(user):
+        """
+        Return the display name for a homepage user.
+
+        :param user: The User object, or None.
+        :return: Display name, email local part, or "".
+        :rtype: str
+        """
         if user is None:
             return ""
         name = (
-            getattr(user, "display_name", None)
-            or getattr(user, "nickname", None)
-            or ""
+            getattr(user, "display_name", None) or getattr(user, "nickname", None) or ""
         ).strip()
         if name:
             return name
@@ -94,6 +140,13 @@ def homepage():
         return email.split("@")[0] if "@" in email else (email or "Player")
 
     def _status_dot(status):
+        """
+        Map a status string to a homepage dot class.
+
+        :param status: The raw status string.
+        :return: "ready", "busy" or "offline".
+        :rtype: str
+        """
         value = (status or "").strip().lower()
         if value == "ready to play":
             return "ready"
@@ -124,9 +177,7 @@ def homepage():
         )
 
     family_games = (
-        db.session.query(
-            _func.coalesce(_func.sum(User.total_games_played), 0)
-        ).scalar()
+        db.session.query(_func.coalesce(_func.sum(User.total_games_played), 0)).scalar()
         or 0
     )
     if current_user.is_authenticated:
@@ -167,7 +218,13 @@ def homepage():
 
 
 def i18n_dict(locale):
-    """Translated UI strings for JavaScript (Full UI plan)."""
+    """
+    Return translated UI strings for JavaScript.
+
+    :param locale: The locale code requested in the URL.
+    :return: JSON response with locale, html_lang and strings, or 404 for unsupported locales.
+    :rtype: flask.Response
+    """
     if locale not in SUPPORTED_LOCALES:
         return jsonify({"error": "Unsupported language."}), 404
     return jsonify(
@@ -181,6 +238,12 @@ def i18n_dict(locale):
 
 @login_required
 def settings():
+    """
+    Render the settings page for the current user.
+
+    :return: The rendered ``settings.html`` response.
+    :rtype: flask.Response
+    """
     try:
         num_questions = int(current_user.default_num_questions or 10)
     except (TypeError, ValueError):
@@ -208,10 +271,26 @@ def settings():
 
 @login_required
 def settings_save():
-    """Persist settings form (single Save for all 3 cards)."""
+    """
+    Persist the settings form (single Save for all 3 cards).
+
+    Accepts a JSON payload, validates each field and updates the
+    current user; also applies the new UI language to the session.
+
+    :return: JSON response with ``ok`` and settings, or 400 with field errors.
+    :rtype: flask.Response
+    """
     payload = request.get_json(silent=True) or {}
 
     def _clean_str(value, limit=80):
+        """
+        Strip and validate an optional string settings field.
+
+        :param value: The raw input value.
+        :param limit: Maximum allowed length after stripping.
+        :return: Tuple of (cleaned value or None, error message or None).
+        :rtype: tuple
+        """
         if value is None:
             return None, None
         if not isinstance(value, str):
@@ -337,7 +416,14 @@ def settings_save():
 
 @login_required
 def account_erase_data():
-    """Reset gameplay stats but keep the account (Erase button)."""
+    """
+    Reset gameplay stats but keep the account (Erase button).
+
+    Clears scores, wins, power-up stats and any active quiz state.
+
+    :return: JSON response with ``ok`` True.
+    :rtype: flask.Response
+    """
     current_user.score = 0
     current_user.best_score = 0
     current_user.total_games_played = 0
@@ -352,7 +438,14 @@ def account_erase_data():
 
 @login_required
 def account_delete():
-    """Delete the account entirely (Delete button)."""
+    """
+    Delete the current user's account entirely (Delete button).
+
+    Logs out, clears the session and removes the user row.
+
+    :return: JSON response with ``ok`` True.
+    :rtype: flask.Response
+    """
     user_id = current_user.id
     try:
         from flask_login import logout_user as _logout_user
@@ -371,11 +464,31 @@ def account_delete():
 
 
 def guide():
+    """
+    Render the how-to-play guide page.
+
+    :return: The rendered ``guide.html`` response.
+    :rtype: flask.Response
+    """
     return render_template("guide.html")
 
 
 def leaderboard():
+    """
+    Render the full leaderboard ordered by best score.
+
+    :return: The rendered ``leaderboard.html`` response.
+    :rtype: flask.Response
+    """
+
     def _status_dot(status):
+        """
+        Map a status string to a leaderboard dot class.
+
+        :param status: The raw status string.
+        :return: "ready", "busy" or "offline".
+        :rtype: str
+        """
         value = (status or "").strip().lower()
         if value == "ready to play":
             return "ready"
@@ -407,6 +520,12 @@ def leaderboard():
 
 @login_required
 def gameplay():
+    """
+    Render the gameplay page with player HUD data.
+
+    :return: The rendered ``gameplay.html`` response.
+    :rtype: flask.Response
+    """
     try:
         num = int(current_user.default_num_questions or 10)
     except (TypeError, ValueError):
@@ -428,6 +547,10 @@ def quiz_generate():
 
     Answers stay server-side in the Flask session; the response only
     contains questions and options.
+
+    :return: JSON response with public questions and total, or an error
+        with 502/503 when generation fails or is unconfigured.
+    :rtype: flask.Response
     """
 
     payload = request.get_json(silent=True) or {}
@@ -438,9 +561,7 @@ def quiz_generate():
     except (TypeError, ValueError):
         num = 10
     num = max(1, min(num, MAX_QUIZ_QUESTIONS))
-    difficulty = (
-        payload.get("difficulty") or current_user.difficulty_level or "medium"
-    )
+    difficulty = payload.get("difficulty") or current_user.difficulty_level or "medium"
     if not isinstance(difficulty, str):
         difficulty = "medium"
     difficulty = difficulty.strip().lower()
@@ -471,18 +592,21 @@ def quiz_generate():
     }
     session.pop("last_result", None)
     public = [
-        {key: q[key] for key in ("question", "options") if key in q}
-        for q in questions
+        {key: q[key] for key in ("question", "options") if key in q} for q in questions
     ]
     return jsonify({"questions": public, "total": len(public)})
 
 
 @login_required
 def quiz_state():
-    """Return the current question (answers stay server-side).
+    """
+    Return the current question (answers stay server-side).
 
     Serving state also starts the server-side timer for the question
     and rolls a random power-up, so speed bonuses need no JS clock.
+
+    :return: JSON public state, or 404 when no quiz is active, 409 when finished.
+    :rtype: flask.Response
     """
     quiz = _get_quiz()
     if quiz is None:
@@ -504,7 +628,15 @@ def quiz_state():
 
 @login_required
 def quiz_answer():
-    """Grade one answer against the current question and advance."""
+    """
+    Grade one answer against the current question and advance.
+
+    Expects JSON ``option_index`` and ``question_index``; awards base
+    plus speed-bonus points and advances the session quiz.
+
+    :return: JSON grading result, or 404/409 on missing, finished or stale quizzes.
+    :rtype: flask.Response
+    """
     quiz = _get_quiz()
     if quiz is None:
         return jsonify({"error": "No active quiz."}), 404
@@ -558,7 +690,15 @@ def quiz_answer():
 
 @login_required
 def quiz_powerup():
-    """Apply the power-up offered for the current question."""
+    """
+    Apply the power-up offered for the current question.
+
+    Expects JSON ``kind`` matching the offered power-up; each kind
+    mutates the session quiz (double/fifty/calc/hint).
+
+    :return: JSON power-up effect data, or 404/409 when unavailable.
+    :rtype: flask.Response
+    """
     quiz = _get_quiz()
     if quiz is None:
         return jsonify({"error": "No active quiz."}), 404
@@ -599,7 +739,16 @@ def quiz_powerup():
 
 @login_required
 def quiz_finish():
-    """Persist a finished quiz to the player's stats (idempotent)."""
+    """
+    Persist a finished quiz to the player's stats (idempotent).
+
+    Updates score, best score, games played, wins and power-up usage;
+    repeat calls return the cached summary.
+
+    :return: JSON summary with quiz_score, total, best_score, is_win and powerups_used,
+        or 404/409 when no quiz is active or it is unfinished.
+    :rtype: flask.Response
+    """
     from sqlalchemy import func as _func
 
     quiz = session.get("quiz")
@@ -613,9 +762,7 @@ def quiz_finish():
     total = quiz.get("score", 0)
     me = current_user
     others_best = (
-        db.session.query(_func.max(User.best_score))
-        .filter(User.id != me.id)
-        .scalar()
+        db.session.query(_func.max(User.best_score)).filter(User.id != me.id).scalar()
         or 0
     )
     is_win = total > others_best
@@ -643,8 +790,283 @@ def quiz_finish():
     return jsonify(summary)
 
 
+# ---------------------------------------------------------------------------
+# Shared game lobby (E-portfolio: notify all + auto-open).
+# The lobby shares only the start signal + config; questions stay
+# personalised per player via quiz_generate in their own language.
+# ---------------------------------------------------------------------------
+
+
+def _refresh_game_status(game):
+    """
+    Roll a lobby game forward by wall-clock; persist transitions.
+
+    Moves lobby -> active at starts_at and any game -> finished at
+    expires_at.
+
+    :param game: The GameSession row to refresh.
+    :return: The same game, possibly with an updated status.
+    :rtype: GameSession
+    """
+    now = time.time()
+    if game.status in ("finished", "cancelled"):
+        return game
+    if now >= (game.expires_at or 0):
+        game.status = "finished"
+        db.session.commit()
+    elif now >= (game.starts_at or 0) and game.status == "lobby":
+        game.status = "active"
+        db.session.commit()
+    return game
+
+
+def _get_live_game():
+    """
+    Return the current lobby/active game, or None.
+
+    Refreshes the latest lobby/active row by wall-clock before returning.
+
+    :return: The live GameSession, or None when no lobby is active.
+    :rtype: GameSession or None
+    """
+    game = (
+        GameSession.query.filter(GameSession.status.in_(["lobby", "active"]))
+        .order_by(GameSession.id.desc())
+        .first()
+    )
+    if game is None:
+        return None
+    return _refresh_game_status(game)
+
+
+def _game_to_dict(game):
+    """
+    Serialise a GameSession row for JSON/SSE responses.
+
+    :param game: The GameSession row to serialise.
+    :return: Dict with id, status, countdown, config and join_url.
+    :rtype: dict
+    """
+    now = time.time()
+    starts_in_ms = max(0, int(((game.starts_at or now) - now) * 1000))
+    return {
+        "id": game.id,
+        "status": game.status,
+        "starts_in_ms": starts_in_ms,
+        "starts_at": game.starts_at,
+        "expires_at": game.expires_at,
+        "num_questions": game.num_questions,
+        "difficulty": game.difficulty,
+        "powerups_enabled": bool(game.powerups_enabled),
+        "lobby_seconds": game.lobby_seconds,
+        "join_url": "/gameplay",
+    }
+
+
+@login_required
+def game_start():
+    """
+    Create a family-wide lobby counting down to a shared start.
+
+    Accepts optional JSON ``num_questions``, ``difficulty``,
+    ``powerups_enabled`` and ``lobby_seconds``; rejects when a game
+    is already live.
+
+    :return: JSON response with the new game (201) or an error (409).
+    :rtype: flask.Response
+    """
+    payload = request.get_json(silent=True) or {}
+    try:
+        num = int(
+            payload.get("num_questions")
+            or getattr(current_user, "default_num_questions", None)
+            or 10
+        )
+    except (TypeError, ValueError):
+        num = 10
+    num = max(1, min(num, MAX_QUIZ_QUESTIONS))
+    difficulty = (
+        payload.get("difficulty")
+        or getattr(current_user, "difficulty_level", None)
+        or "medium"
+    )
+    if not isinstance(difficulty, str):
+        difficulty = "medium"
+    difficulty = difficulty.strip().lower()
+    if difficulty not in DIFFICULTY_LEVELS:
+        difficulty = "medium"
+    powerups_enabled = payload.get("powerups_enabled", True)
+    if not isinstance(powerups_enabled, bool):
+        powerups_enabled = True
+    try:
+        lobby_seconds = int(payload.get("lobby_seconds", DEFAULT_LOBBY_SECONDS))
+    except (TypeError, ValueError):
+        lobby_seconds = DEFAULT_LOBBY_SECONDS
+    lobby_seconds = max(MIN_LOBBY_SECONDS, min(lobby_seconds, MAX_LOBBY_SECONDS))
+
+    existing = _get_live_game()
+    if existing is not None and existing.status in ("lobby", "active"):
+        return (
+            jsonify(
+                {"error": "A game is already live.", "game": _game_to_dict(existing)}
+            ),
+            409,
+        )
+
+    now = time.time()
+    starts_at = now + lobby_seconds
+    duration = num * (QUESTION_TIME_LIMIT_MS / 1000.0) + GAME_EXPIRY_GRACE_SECONDS
+    game = GameSession(
+        status="lobby",
+        created_by_id=current_user.id,
+        num_questions=num,
+        difficulty=difficulty,
+        powerups_enabled=powerups_enabled,
+        lobby_seconds=lobby_seconds,
+        starts_at=starts_at,
+        expires_at=starts_at + duration,
+        created_at=now,
+    )
+    db.session.add(game)
+    db.session.commit()
+    return jsonify({"game": _game_to_dict(game)}), 201
+
+
+@login_required
+def game_status():
+    """
+    Return the current lobby/live game for polling.
+
+    :return: JSON response with ``active_game`` (dict or None).
+    :rtype: flask.Response
+    """
+    game = _get_live_game()
+    if game is None or game.status not in ("lobby", "active"):
+        return jsonify({"active_game": None})
+    return jsonify({"active_game": _game_to_dict(game)})
+
+
+@login_required
+def game_join():
+    """
+    Return lobby config so the joiner can generate own-language questions.
+
+    :return: JSON response with the live game, or 404 when none exists.
+    :rtype: flask.Response
+    """
+    game = _get_live_game()
+    if game is None or game.status not in ("lobby", "active"):
+        return jsonify({"error": "No live game. Start one from the homepage."}), 404
+    return jsonify({"game": _game_to_dict(game)})
+
+
+@login_required
+def game_cancel():
+    """
+    Cancel the live lobby (starter only).
+
+    :return: JSON response with ``ok`` and the cancelled game,
+        or 403/404 when not permitted or no game is live.
+    :rtype: flask.Response
+    """
+    game = _get_live_game()
+    if game is None or game.status not in ("lobby", "active"):
+        return jsonify({"error": "No live game to cancel."}), 404
+    if game.created_by_id != current_user.id:
+        return jsonify({"error": "Only the starter can cancel this game."}), 403
+    game.status = "cancelled"
+    db.session.commit()
+    return jsonify({"ok": True, "game": _game_to_dict(game)})
+
+
+@login_required
+def game_events():
+    """Server-Sent Events: game-pending/game-live/game-cancelled + heartbeats.
+
+    Query ?once=1 returns a single snapshot event and closes (for tests
+    and restrictive proxies); otherwise streams until the game ends.
+
+    :return: SSE response with snapshot/update/end events.
+    :rtype: flask.Response
+    """
+    once = request.args.get("once") == "1"
+
+    def _snapshot():
+        """
+        Build a single SSE snapshot of the current game state.
+
+        :return: Dict with ``type`` (game-pending/game-live/game-none)
+            plus game fields when live.
+        :rtype: dict
+        """
+        game = _get_live_game()
+        if game is None or game.status not in ("lobby", "active"):
+            return {"type": "game-none", "active_game": None}
+        data = _game_to_dict(game)
+        kind = "game-live" if game.status == "active" else "game-pending"
+        return {"type": kind, **data}
+
+    if once:
+        body = "event: snapshot\ndata: %s\n\n" % json.dumps(_snapshot())
+        return Response(
+            body,
+            mimetype="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
+
+    def generate():
+        """
+        Stream game snapshots and heartbeats until the game ends.
+
+        Wrapped with ``stream_with_context`` at the call site so the
+        request context stays alive while streaming.
+
+        :return: Generator yielding SSE-formatted snapshot/update/end events.
+        :rtype: collections.abc.Generator
+        """
+        last = None
+        yield "event: snapshot\ndata: %s\n\n" % json.dumps(_snapshot())
+        last = json.dumps(_snapshot(), sort_keys=True)
+        idle = 0
+        while True:
+            time.sleep(2)
+            snap = _snapshot()
+            encoded = json.dumps(snap, sort_keys=True)
+            if encoded != last:
+                last = encoded
+                yield "event: update\ndata: %s\n\n" % json.dumps(snap)
+                idle = 0
+                if snap.get("type") in ("game-none",):
+                    yield "event: end\ndata: {}\n\n"
+                    break
+            else:
+                idle += 1
+                if idle % 7 == 0:
+                    yield ": heartbeat\n\n"
+            game = _get_live_game()
+            if game is None:
+                yield "event: end\ndata: {}\n\n"
+                break
+            if time.time() > (game.expires_at or 0) + 30:
+                yield "event: end\ndata: {}\n\n"
+                break
+
+    return Response(
+        stream_with_context(generate()),
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
 def register_routes(app):
-    """Register all views on the app (keeps the factory slim)."""
+    """
+    Register all views on the app (keeps the factory slim).
+
+    :param app: The Flask application to register routes on.
+    :return: None.
+    :rtype: None
+    """
+
     app.context_processor(inject_theme)
     app.context_processor(inject_i18n)
     app.before_request(_persist_lang_param)
@@ -653,6 +1075,7 @@ def register_routes(app):
     app.add_url_rule(
         "/api/i18n/<locale>.json", endpoint="i18n_dict", view_func=i18n_dict
     )
+
     app.add_url_rule("/settings", endpoint="settings", view_func=settings)
     app.add_url_rule(
         "/api/settings/save",
@@ -660,12 +1083,14 @@ def register_routes(app):
         view_func=settings_save,
         methods=["POST"],
     )
+
     app.add_url_rule(
         "/api/account/erase-data",
         endpoint="account_erase_data",
         view_func=account_erase_data,
         methods=["POST"],
     )
+
     app.add_url_rule(
         "/api/account",
         endpoint="account_delete",
@@ -673,9 +1098,7 @@ def register_routes(app):
         methods=["DELETE"],
     )
     app.add_url_rule("/guide", endpoint="guide", view_func=guide)
-    app.add_url_rule(
-        "/leaderboard", endpoint="leaderboard", view_func=leaderboard
-    )
+    app.add_url_rule("/leaderboard", endpoint="leaderboard", view_func=leaderboard)
     app.add_url_rule("/gameplay", endpoint="gameplay", view_func=gameplay)
     app.add_url_rule(
         "/api/quiz/generate",
@@ -683,24 +1106,49 @@ def register_routes(app):
         view_func=quiz_generate,
         methods=["POST"],
     )
-    app.add_url_rule(
-        "/api/quiz/state", endpoint="quiz_state", view_func=quiz_state
-    )
+
+    app.add_url_rule("/api/quiz/state", endpoint="quiz_state", view_func=quiz_state)
     app.add_url_rule(
         "/api/quiz/answer",
         endpoint="quiz_answer",
         view_func=quiz_answer,
         methods=["POST"],
     )
+
     app.add_url_rule(
         "/api/quiz/powerup",
         endpoint="quiz_powerup",
         view_func=quiz_powerup,
         methods=["POST"],
     )
+
     app.add_url_rule(
         "/api/quiz/finish",
         endpoint="quiz_finish",
         view_func=quiz_finish,
         methods=["POST"],
     )
+
+    app.add_url_rule(
+        "/api/game/start",
+        endpoint="game_start",
+        view_func=game_start,
+        methods=["POST"],
+    )
+
+    app.add_url_rule("/api/game/status", endpoint="game_status", view_func=game_status)
+    app.add_url_rule(
+        "/api/game/join",
+        endpoint="game_join",
+        view_func=game_join,
+        methods=["POST"],
+    )
+
+    app.add_url_rule(
+        "/api/game/cancel",
+        endpoint="game_cancel",
+        view_func=game_cancel,
+        methods=["POST"],
+    )
+
+    app.add_url_rule("/api/game/events", endpoint="game_events", view_func=game_events)

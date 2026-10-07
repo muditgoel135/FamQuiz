@@ -12,6 +12,10 @@ def app(tmp_path):
     ``fs_authn_via``) between test-client requests, so session-based
     ``@auth_required`` endpoints (e.g. /change) would misbehave.
     Each request therefore gets a fresh context, like in production.
+
+    :param tmp_path: The pytest temporary path fixture.
+    :return: The configured Flask app for tests.
+    :rtype: flask.Flask
     """
 
     db_file = tmp_path / "test.db"
@@ -37,13 +41,23 @@ def app(tmp_path):
 
 @pytest.fixture()
 def client(app):
-    """Test client bound to the isolated app."""
+    """Return a test client bound to the isolated app.
+
+    :param app: The Flask app fixture.
+    :return: The Flask test client.
+    :rtype: flask.testing.FlaskClient
+    """
     return app.test_client()
 
 
 @pytest.fixture()
 def existing_user(app):
-    """A pre-registered user created via the datastore (bypasses the form)."""
+    """Create a pre-registered user via the datastore (bypasses the form).
+
+    :param app: The Flask app fixture.
+    :return: Dict with the user's email and password.
+    :rtype: dict
+    """
     from flask_security.utils import hash_password
 
     email = "player@example.com"

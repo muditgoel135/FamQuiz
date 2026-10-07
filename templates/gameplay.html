@@ -12,6 +12,7 @@
 </head>
 
 <body class="{{ theme_class }}">
+    {% include 'game_notify.html' %}
     <main class="gameplay-wrap container-fluid d-flex flex-column gap-3 px-0">
         <header class="game-hud-top d-flex flex-wrap justify-content-between align-items-center gap-2">
             <div class="d-flex align-items-center gap-2">
@@ -201,6 +202,45 @@
 
             function showNoQuiz() {
                 currentIndex = -1;
+                questionEl.textContent = window.I18N.noQuiz;
+                hintEl.hidden = true;
+                optionBtns.forEach(function (btn) {
+                    btn.textContent = "—";
+                });
+                setOptionsEnabled(false);
+                setPowerups(null);
+                progressEl.textContent = "Question –/–";
+                tryLobbyJoin();
+            }
+
+            var joinAttempted = false;
+            function tryLobbyJoin() {
+                // Auto-join a live shared lobby with personalised questions
+                // (each player generates in their own language from lobby config).
+                if (joinAttempted) return;
+                joinAttempted = true;
+                questionEl.textContent = window.I18N.loadFail;
+                fetch("{{ url_for('game_join') }}", { method: "POST" })
+                    .then(handleErrors)
+                    .then(function (body) {
+                        var game = body.game || {};
+                        return post("{{ url_for('quiz_generate') }}", {
+                            num_questions: game.num_questions,
+                            difficulty: game.difficulty,
+                            powerups_enabled: game.powerups_enabled
+                        });
+                    })
+                    .then(function () {
+                        loadState();
+                    })
+                    .catch(function () {
+                        showNoQuizStatic();
+                    });
+            }
+
+            function showNoQuizStatic() {
+                currentIndex = -1;
+                joinAttempted = true;
                 questionEl.textContent = window.I18N.noQuiz;
                 hintEl.hidden = true;
                 optionBtns.forEach(function (btn) {

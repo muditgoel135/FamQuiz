@@ -20,7 +20,15 @@ load_dotenv()
 
 
 def _env(*names, default=""):
-    """Return first non-empty env var, supporting legacy dash-names in .env."""
+    """
+    Return first non-empty env var, supporting legacy dash-names in .env.
+
+    :param names: Environment variable names to check in order.
+    :param default: Default value if none of the names are set.
+    :return: The value of the first set environment variable, or the default.
+    :rtype: str
+    """
+
     for name in names:
         value = os.getenv(name)
         if value:
@@ -29,6 +37,15 @@ def _env(*names, default=""):
 
 
 def _env_bool(*names, default=False):
+    """
+    Return a boolean value based on the first non-empty environment variable.
+
+    :param names: Environment variable names to check in order.
+    :param default: Default value if none of the names are set.
+    :return: The boolean value of the first set environment variable, or the default.
+    :rtype: bool
+    """
+
     value = _env(*names, default="")
     if not value:
         return default
@@ -36,7 +53,16 @@ def _env_bool(*names, default=False):
 
 
 def _env_port(*names, default=587):
-    """Return port as int, falling back to default on missing/garbage values."""
+    """
+    Return port as int, falling back to default on missing/garbage values.
+    If the value is not a valid integer, it will fall back to the default.
+
+    :param names: Environment variable names to check in order.
+    :param default: Default port number if none of the names are set or valid.
+    :return: The port number as an integer.
+    :rtype: int
+    """
+
     try:
         return int(_env(*names, default=str(default)) or default)
     except (TypeError, ValueError):
@@ -132,8 +158,13 @@ LOCALE_TO_HTML = {
 
 
 def _load_translations():
-    """Load UI strings from translations.json (fallback: empty catalogs)."""
-    
+    """
+    Load UI strings from translations.json (fallback: empty catalogs).
+
+    :return: Dictionary mapping locale codes to string translation dictionaries.
+    :rtype: dict
+    """
+
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "translations.json")
     try:
         with open(path, encoding="utf-8") as fh:
@@ -149,10 +180,11 @@ TRANSLATIONS = _load_translations()
 def translate(message, locale):
     """
     Return translated message, falling back to English source.
-    
+
     :param message: The original English string to translate.
     :param locale: The target locale code (e.g., 'es', 'hi', 'zh_Hans').
     :return: The translated string if available; otherwise, the original message.
+    :rtype: str
     """
 
     if not message:
@@ -168,6 +200,9 @@ def get_locale():
 
     Priority: per-email override (translated mails) > ?lang= >
     session > user setting > Accept-Language > en.
+
+    :return: The resolved locale code.
+    :rtype: str
     """
 
     try:
@@ -175,20 +210,25 @@ def get_locale():
 
         if not has_request_context():
             return "en"
+
         try:
             forced = g.get("email_locale")
         except Exception:
             forced = None
+
         if forced in SUPPORTED_LOCALES:
             return forced
+
         # Explicit override wins and persists for anonymous users.
         arg = request.args.get("lang")
         if arg in SUPPORTED_LOCALES:
             session["locale"] = arg
             return arg
+
         sess = session.get("locale")
         if sess in SUPPORTED_LOCALES:
             return sess  # type: ignore[return-value]
+
         try:
             if current_user.is_authenticated:
                 mapped = LANGUAGE_TO_LOCALE.get(
@@ -196,21 +236,32 @@ def get_locale():
                 )
                 if mapped in SUPPORTED_LOCALES:
                     return mapped
+
         except Exception:
             pass
+
         best = request.accept_languages.best_match(["en", "es", "hi", "zh-Hans", "zh"])
         if best:
             if best in ("zh-Hans", "zh"):
                 return "zh_Hans"
             if best in SUPPORTED_LOCALES:
                 return best
+
     except Exception:
         pass
+
     return "en"
 
 
 def _(message):
-    """Translate a UI string into the current locale (fallback: English)."""
+    """
+    Translate a UI string into the current locale (fallback: English).
+
+    :param message: The original English string to translate.
+    :return: The translated string if available; otherwise, the original message.
+    :rtype: str
+    """
+
     try:
         return translate(message, get_locale())
     except Exception:
@@ -279,16 +330,25 @@ class QuizGenerationError(Exception):
 
 
 def get_ollama_client():
-    """Build an Ollama cloud client using the family-wide API key."""
+    """
+    Build an Ollama cloud client using the family-wide API key.
+
+    :return: An Ollama client instance.
+    :rtype: ollama.Client
+    :raises QuizConfigError: If the Ollama client library is not installed or the API key is missing.
+    """
+
     try:
         import ollama
     except ImportError as exc:
         raise QuizConfigError("Quiz service is not installed.") from exc
+
     if not OLLAMA_API_KEY:
         raise QuizConfigError(
             "Quiz generation is not configured yet (missing OLLAMA_API_KEY). "
             "Add it to .env to enable quizzes."
         )
+
     return ollama.Client(
         host=OLLAMA_HOST,
         headers={"Authorization": f"Bearer {OLLAMA_API_KEY}"},
@@ -297,7 +357,16 @@ def get_ollama_client():
 
 
 def build_quiz_messages(user, num_questions, difficulty=None):
-    """Build the chat messages personalising the quiz for ``user``."""
+    """
+    Build the chat messages personalising the quiz for ``user``.
+
+    :param user: The User object for whom the quiz is generated.
+    :param num_questions: The number of quiz questions to generate.
+    :param difficulty: Optional difficulty level ('easy', 'medium', 'hard').
+    :return: A list of messages formatted for the Ollama chat API.
+    :rtype: list
+    """
+
     subject = user.favorite_subject or "general knowledge"
     difficulty = (difficulty or user.difficulty_level or "medium").strip().lower()
     if difficulty not in DIFFICULTY_LEVELS:
@@ -331,7 +400,14 @@ def build_quiz_messages(user, num_questions, difficulty=None):
 
 
 def strip_code_fences(content):
-    """Remove Markdown ``` fences some models add around JSON output."""
+    """
+    Remove Markdown ``` fences some models add around JSON output.
+
+    :param content: The string content potentially wrapped in code fences.
+    :return: The content with code fences removed, if present.
+    :rtype: str
+    """
+
     if not isinstance(content, str):
         return content
     text = content.strip()
@@ -346,31 +422,53 @@ def strip_code_fences(content):
 
 
 def resolve_answer_index(item, options):
-    """Accept ``answer_index`` (0-3) or ``answer`` (option text)."""
+    """
+    Resolve the answer index from either an index (0-3) or the answer text.
+    Accept ``answer_index`` (0-3) or ``answer`` (option text).
+
+    :param item: The question dictionary containing 'answer_index' or 'answer'.
+    :param options: The list of option strings for the question.
+    :return: The resolved answer index (0-3) if valid; otherwise, None.
+    :rtype: int or None
+    """
+
     answer = item.get("answer_index", item.get("answer"))
     if isinstance(answer, bool):
         return None
+
     if isinstance(answer, int):
         return answer if 0 <= answer <= 3 else None
+
     if isinstance(answer, str) and answer.strip():
         matches = [
             i
             for i, o in enumerate(options)
             if o.strip().lower() == answer.strip().lower()
         ]
+
         if len(matches) == 1:
             return matches[0]
+
     return None
 
 
 def parse_quiz_content(content):
-    """Validate model JSON into a list of question dicts."""
+    """
+    Validate model JSON into a list of question dicts.
+
+    :param content: The raw JSON string returned by the quiz model.
+    :return: A list of validated question dictionaries.
+    :rtype: list
+    :raises QuizGenerationError: If the content is unreadable or contains no usable questions.
+    """
+
     try:
         data = json.loads(strip_code_fences(content))
     except (TypeError, ValueError) as exc:
         raise QuizGenerationError(
             "Quiz service returned an unreadable response."
         ) from exc
+
     if isinstance(data, dict):
         raw = data.get("questions")
         if raw is None and isinstance(data.get("question"), str):
@@ -381,14 +479,17 @@ def parse_quiz_content(content):
         raw = data
     else:
         raw = None
+
     if not isinstance(raw, list):
         raise QuizGenerationError("Quiz service returned an unreadable response.")
     questions = []
+
     for item in raw:
         if not isinstance(item, dict):
             continue
         question = item.get("question")
         options = item.get("options")
+
         if (
             not isinstance(question, str)
             or not question.strip()
@@ -398,21 +499,30 @@ def parse_quiz_content(content):
         ):
             continue
         answer_index = resolve_answer_index(item, options)
+
         if answer_index is None:
             continue
+
         entry = {
             "question": question.strip(),
             "options": [o.strip() for o in options],
             "answer_index": answer_index,
         }
         questions.append(entry)
+
     if not questions:
         raise QuizGenerationError("Quiz service returned no usable questions.")
+
     return questions
 
 
 def _get_quiz():
-    """Return the in-progress session quiz, or None."""
+    """
+    Return the in-progress session quiz, or None.
+    :return: The in-progress session quiz, or None if no quiz is in progress.
+    :rtype: dict or None
+    """
+
     quiz = session.get("quiz")
     if not isinstance(quiz, dict) or not quiz.get("questions"):
         return None
@@ -420,11 +530,25 @@ def _get_quiz():
 
 
 def _store_quiz(quiz):
+    """
+    Persist the quiz dict in the Flask session.
+
+    :param quiz: The quiz state dict (questions, index, score, timers).
+    :return: None.
+    :rtype: None
+    """
     session["quiz"] = quiz
 
 
 def _public_state(quiz):
-    """Current question without answers, plus progress and score."""
+    """
+    Current question without answers, plus progress and score.
+
+    :param quiz: The in-progress quiz dictionary.
+    :return: A dictionary containing the current question, options, index, total questions, quiz score, and any offered power-up.
+    :rtype: dict
+    """
+
     index = quiz.get("index", 0)
     question = quiz["questions"][index]
     return {
@@ -438,7 +562,17 @@ def _public_state(quiz):
 
 
 def generate_questions(user, num_questions, difficulty=None):
-    """Generate personalised quiz questions via the Ollama cloud model."""
+    """
+    Generate personalised quiz questions via the Ollama cloud model.
+
+    :param user: The User object the quiz is personalised for.
+    :param num_questions: The number of questions to generate.
+    :param difficulty: Optional difficulty level ('easy', 'medium', 'hard').
+    :return: A list of validated question dicts.
+    :rtype: list
+    :raises QuizConfigError: If the client library or API key is missing.
+    :raises QuizGenerationError: If the model call fails or returns unusable output.
+    """
     client = get_ollama_client()
     messages = build_quiz_messages(user, num_questions, difficulty)
     try:
@@ -524,11 +658,49 @@ class User(db.Model, UserMixin):
     default_num_questions = db.Column(db.Integer, default=10)
 
 
+class GameSession(db.Model):
+    """Family-wide game lobby: one pending/live game notifies all devices.
+
+    Questions stay personalised per player (each client calls
+    quiz_generate with the lobby config in their own language);
+    this row shares only the start signal + config.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    status = db.Column(db.String(20), default="lobby", nullable=False)
+    # lobby -> counting down, active -> live, finished/cancelled -> terminal
+    created_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    num_questions = db.Column(db.Integer, default=10, nullable=False)
+    difficulty = db.Column(db.String(20), default="medium", nullable=False)
+    powerups_enabled = db.Column(db.Boolean, default=True, nullable=False)
+    lobby_seconds = db.Column(db.Integer, default=300, nullable=False)
+    starts_at = db.Column(db.Float, nullable=False, default=0.0)
+    expires_at = db.Column(db.Float, nullable=False, default=0.0)
+    created_at = db.Column(db.Float, nullable=False, default=0.0)
+
+
+GAME_STATUSES = ("lobby", "active", "finished", "cancelled")
+DEFAULT_LOBBY_SECONDS = 300
+MIN_LOBBY_SECONDS = 10
+MAX_LOBBY_SECONDS = 300
+GAME_EXPIRY_GRACE_SECONDS = 120
+
+
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 
 
 def _recipient_locale(recipient, context_user=None):
-    """Resolve the email recipient's locale from their stored language."""
+    """
+    Resolve the email recipient's locale from their stored language.
+
+    Falls back to the request locale and finally to English when the
+    recipient or their language preference cannot be determined.
+
+    :param recipient: Email address string or (name, address) list/tuple.
+    :param context_user: Optional User object with a ``language`` attribute.
+    :return: The resolved locale code.
+    :rtype: str
+    """
     lang = getattr(context_user, "language", None)
     if lang:
         locale = LANGUAGE_TO_LOCALE.get(lang.strip())
@@ -551,7 +723,17 @@ def _recipient_locale(recipient, context_user=None):
 
 
 def security_render_template(template, **context):
-    """Render Flask-Security templates (incl. mails) in recipient locale."""
+    """
+    Render Flask-Security templates (incl. mails) in recipient locale.
+
+    Sets ``g.email_locale`` for the render so :func:`_` picks the
+    recipient's language, then restores the previous value.
+
+    :param template: The template name to render.
+    :param context: Template context; may include ``email`` or ``user``.
+    :return: The rendered template string.
+    :rtype: str
+    """
     sentinel = object()
     try:
         previous = g.get("email_locale", sentinel)
@@ -580,6 +762,18 @@ class TranslatedMailUtil(MailUtil):
     """Send Flask-Security mails with per-recipient translated subjects."""
 
     def send_mail(self, template, subject, recipient, sender, body, html, **kwargs):
+        """
+        Send a Flask-Security mail with a per-recipient translated subject.
+
+        :param template: The mail template name.
+        :param subject: The English source subject to translate.
+        :param recipient: Email recipient address or list.
+        :param sender: The sender address.
+        :param body: The plain-text body.
+        :param html: The HTML body.
+        :param kwargs: Extra context; may include ``user`` for locale lookup.
+        :return: The result of the parent ``send_mail`` call.
+        """
         try:
             locale = _recipient_locale(recipient, kwargs.get("user"))
             subject = translate(subject, locale)
@@ -597,7 +791,15 @@ security = Security(
 
 
 def display_name_of(user):
-    """Best available display name: display_name, nickname, then email user."""
+    """
+    Return the best available display name for a user.
+
+    Prefers ``display_name``, then ``nickname``, then the email local part.
+
+    :param user: The User object, or None.
+    :return: The display name, or "Player" when unavailable.
+    :rtype: str
+    """
     if user is None:
         return "Player"
     name = (user.display_name or user.nickname or "").strip()
@@ -608,7 +810,16 @@ def display_name_of(user):
 
 
 def rank_of(user_id):
-    """1-based leaderboard rank ordered like the homepage leaderboard."""
+    """
+    Return the 1-based leaderboard rank for a user.
+
+    Ordering matches the homepage leaderboard (best_score desc,
+    total_wins desc, id asc).
+
+    :param user_id: The primary key of the user to rank.
+    :return: The 1-based rank, or 1 when the user is not ranked.
+    :rtype: int
+    """
     ordered_ids = [
         u.id
         for u in User.query.order_by(

@@ -8,6 +8,12 @@ from app import MAX_QUIZ_QUESTIONS
 
 
 def _quiz_json(n=2):
+    """Build a fake quiz JSON payload with n questions.
+
+    :param n: The n fixture.
+    :return: Helper value for tests.
+    :rtype: object
+    """
     return json.dumps(
         {
             "questions": [
@@ -26,16 +32,32 @@ class _FakeClient:
     """Stands in for ollama.Client; records how it was called."""
 
     def __init__(self, content, model_ok=True):
+        """Initialise the fake Ollama client with canned content.
+
+        :param content: The content fixture.
+        :param model_ok: The model_ok fixture.
+        """
         self.content = content
         self.calls = []
         self.model_ok = model_ok
 
     def chat(self, model="", messages=None, **kwargs):
+        """Record the chat call and return canned quiz content.
+
+        :param model: The model fixture.
+        :param messages: The messages fixture.
+        :return: Fake chat response with canned content.
+        """
         self.calls.append({"model": model, "messages": messages, **kwargs})
         return SimpleNamespace(message=SimpleNamespace(content=self.content))
 
 
 def _login(client, existing_user):
+    """Log in the fixture user via POST /login.
+
+    :param client: The client fixture.
+    :param existing_user: The existing_user fixture.
+    """
     client.post(
         "/login",
         data={
@@ -48,10 +70,20 @@ def _login(client, existing_user):
 class TestQuizGenerate:
     def test_requires_login(self, client):
         # JSON API requests get 401 (not a browser redirect) when logged out.
+        """Verify requires login.
+
+        :param client: The client fixture.
+        """
         resp = client.post("/api/quiz/generate", json={})
         assert resp.status_code == 401
 
     def test_missing_key_returns_503(self, client, existing_user, monkeypatch):
+        """Verify missing key returns 503.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "")
         resp = client.post("/api/quiz/generate", json={})
@@ -61,6 +93,12 @@ class TestQuizGenerate:
     def test_success_returns_questions_without_answers(
         self, client, existing_user, monkeypatch
     ):
+        """Verify success returns questions without answers.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         fake = _FakeClient(_quiz_json(2))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
@@ -79,6 +117,13 @@ class TestQuizGenerate:
     def test_prompt_uses_profile_and_default_model(
         self, client, app, existing_user, monkeypatch
     ):
+        """Verify prompt uses profile and default model.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         with app.app_context():
             from app import User, db
@@ -101,6 +146,12 @@ class TestQuizGenerate:
             assert token in prompt
 
     def test_num_questions_is_clamped(self, client, existing_user, monkeypatch):
+        """Verify num questions is clamped.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         fake = _FakeClient(_quiz_json(MAX_QUIZ_QUESTIONS))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
@@ -110,6 +161,12 @@ class TestQuizGenerate:
         assert resp.get_json()["total"] <= MAX_QUIZ_QUESTIONS
 
     def test_bad_model_output_returns_502(self, client, existing_user, monkeypatch):
+        """Verify bad model output returns 502.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         fake = _FakeClient("not json at all {{{")
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
@@ -118,10 +175,24 @@ class TestQuizGenerate:
         assert resp.status_code == 502
 
     def test_model_failure_returns_502(self, client, existing_user, monkeypatch):
+        """Verify model failure returns 502.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
 
         class _Boom:
+            """Failing stand-in for the Ollama client."""
+
             def chat(self, *args, **kwargs):
+                """Simulate a cloud outage.
+
+                :param args: Positional args (ignored).
+                :param kwargs: Keyword args (ignored).
+                :raises RuntimeError: Always raised to simulate downtime.
+                """
                 raise RuntimeError("cloud is down")
 
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
@@ -132,6 +203,7 @@ class TestQuizGenerate:
 
 class TestParseQuizContent:
     def test_tolerates_fences_and_text_answer(self):
+        """Verify fenced JSON with a text answer is tolerated."""
         # Shape really returned by gpt-oss:20b on Ollama cloud.
         content = (
             '```json\n{"questions": [{"question": "Which planet is '
@@ -143,6 +215,7 @@ class TestParseQuizContent:
         assert questions[0]["answer_index"] == 1
 
     def test_tolerates_top_level_array(self):
+        """Verify a top-level JSON array is tolerated."""
         # Shape really returned by gemma4:31b on Ollama cloud.
         content = (
             '```json\n[{"question": "Which planet is known as the '
@@ -155,6 +228,7 @@ class TestParseQuizContent:
         assert questions[0]["answer_index"] == 1
 
     def test_tolerates_bare_single_object(self):
+        """Verify a bare single question object is tolerated."""
         # Shape really returned by nemotron-3-ultra on Ollama cloud.
         content = (
             '{"question": "Which planet is known as the Red Planet?", '
@@ -166,6 +240,8 @@ class TestParseQuizContent:
         assert questions[0]["answer_index"] == 0
 
     def test_rejects_unmatched_text_answer(self):
+        """Verify rejects unmatched text answer.
+        """
         content = json.dumps(
             {
                 "questions": [
@@ -185,6 +261,11 @@ class TestParseQuizContent:
 
 class TestGameplayData:
     def _login(self, client, existing_user):
+        """Log in the fixture user via POST /login.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         client.post(
             "/login",
             data={
@@ -194,6 +275,12 @@ class TestGameplayData:
         )
 
     def test_hud_shows_real_player_data(self, client, app, existing_user):
+        """Verify hud shows real player data.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        :param existing_user: The existing_user fixture.
+        """
         self._login(client, existing_user)
         with app.app_context():
             from app import User, db
@@ -216,6 +303,11 @@ class TestGameplayData:
             assert endpoint in resp.data
 
     def test_no_static_placeholders_remain(self, client, existing_user):
+        """Verify no static placeholders remain.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         self._login(client, existing_user)
         resp = client.get("/gameplay")
         assert resp.status_code == 200
@@ -223,6 +315,12 @@ class TestGameplayData:
             assert placeholder not in resp.data
 
     def test_rank_reflects_leaderboard(self, client, app, existing_user):
+        """Verify rank reflects leaderboard.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        :param existing_user: The existing_user fixture.
+        """
         from flask_security.utils import hash_password
 
         with app.app_context():
@@ -251,6 +349,15 @@ import time as _time
 
 
 def _start_mocked_quiz(client, monkeypatch, n=2, **generate_kwargs):
+    """Start a quiz with a mocked Ollama client.
+
+    :param client: The client fixture.
+    :param monkeypatch: The monkeypatch fixture.
+    :param n: The number of questions to generate.
+    :param generate_kwargs: Extra JSON fields merged into the generate body.
+    :return: The parsed JSON response from the generate endpoint.
+    :rtype: dict
+    """
     fake = _FakeClient(_quiz_json(n))
     monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
     monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
@@ -262,6 +369,11 @@ def _start_mocked_quiz(client, monkeypatch, n=2, **generate_kwargs):
 
 
 def _set_started_ago(client, seconds):
+    """Backdate the session quiz timer by seconds.
+
+    :param client: The client fixture.
+    :param seconds: The seconds fixture.
+    """
     with client.session_transaction() as sess:
         sess["quiz"]["started_at"] = _time.time() - seconds
         # Nested dict edits don't flag the session as modified on their
@@ -270,6 +382,11 @@ def _set_started_ago(client, seconds):
 
 
 def _force_powerup(client, kind):
+    """Force-offer a power-up in the session quiz.
+
+    :param client: The client fixture.
+    :param kind: The kind fixture.
+    """
     with client.session_transaction() as sess:
         sess["quiz"]["offered"] = kind
         sess["quiz"]["powerup_used"] = False
@@ -280,15 +397,30 @@ def _force_powerup(client, kind):
 
 class TestQuizState:
     def test_requires_login(self, client):
+        """Verify requires login.
+
+        :param client: The client fixture.
+        """
         assert client.get("/api/quiz/state").status_code == 302
 
     def test_no_quiz_returns_404(self, client, existing_user):
+        """Verify no quiz returns 404.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         _login(client, existing_user)
         assert client.get("/api/quiz/state").status_code == 404
 
     def test_returns_current_question_without_answers(
         self, client, existing_user, monkeypatch
     ):
+        """Verify returns current question without answers.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=2)
         body = client.get("/api/quiz/state").get_json()
@@ -302,6 +434,12 @@ class TestQuizState:
     def test_powerup_offer_is_random_but_passes_through(
         self, client, existing_user, monkeypatch
     ):
+        """Verify powerup offer is random but passes through.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         monkeypatch.setattr(app_module.random, "random", lambda: 0.0)
@@ -310,6 +448,12 @@ class TestQuizState:
         assert body["powerup"] == "fifty"
 
     def test_powerups_disabled_offers_nothing(self, client, existing_user, monkeypatch):
+        """Verify powerups disabled offers nothing.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1, powerups_enabled=False)
         body = client.get("/api/quiz/state").get_json()
@@ -318,9 +462,18 @@ class TestQuizState:
 
 class TestQuizAnswer:
     def test_requires_login(self, client):
+        """Verify requires login.
+
+        :param client: The client fixture.
+        """
         assert client.post("/api/quiz/answer", json={}).status_code == 401
 
     def test_no_quiz_returns_404(self, client, existing_user):
+        """Verify no quiz returns 404.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         _login(client, existing_user)
         resp = client.post(
             "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
@@ -328,6 +481,12 @@ class TestQuizAnswer:
         assert resp.status_code == 404
 
     def test_correct_fast_answer_earns_bonus(self, client, existing_user, monkeypatch):
+        """Verify correct fast answer earns bonus.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=2)
         client.get("/api/quiz/state")
@@ -345,6 +504,12 @@ class TestQuizAnswer:
     def test_slow_answer_clamps_to_base_points(
         self, client, existing_user, monkeypatch
     ):
+        """Verify slow answer clamps to base points.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -356,6 +521,12 @@ class TestQuizAnswer:
         assert body["points_awarded"] == 1000
 
     def test_wrong_answer_scores_zero(self, client, existing_user, monkeypatch):
+        """Verify wrong answer scores zero.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -370,6 +541,12 @@ class TestQuizAnswer:
         assert body["finished"] is True
 
     def test_fast_beats_slow_in_one_quiz(self, client, existing_user, monkeypatch):
+        """Verify fast beats slow in one quiz.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=2)
         client.get("/api/quiz/state")
@@ -387,6 +564,12 @@ class TestQuizAnswer:
     def test_stale_or_invalid_answers_rejected(
         self, client, existing_user, monkeypatch
     ):
+        """Verify stale or invalid answers rejected.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=2)
         client.get("/api/quiz/state")
@@ -411,6 +594,12 @@ class TestQuizAnswer:
             assert resp.status_code == 409
 
     def test_answering_finished_quiz_rejected(self, client, existing_user, monkeypatch):
+        """Verify answering finished quiz rejected.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -424,9 +613,19 @@ class TestQuizAnswer:
 
 class TestQuizPowerup:
     def test_requires_login(self, client):
+        """Verify requires login.
+
+        :param client: The client fixture.
+        """
         assert client.post("/api/quiz/powerup", json={}).status_code == 401
 
     def test_unoffered_or_disabled_rejected(self, client, existing_user, monkeypatch):
+        """Verify unoffered or disabled rejected.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1, powerups_enabled=False)
         client.get("/api/quiz/state")
@@ -446,6 +645,12 @@ class TestQuizPowerup:
         )
 
     def test_double_doubles_fast_points(self, client, existing_user, monkeypatch):
+        """Verify double doubles fast points.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -464,6 +669,12 @@ class TestQuizPowerup:
         assert 2800 <= body["points_awarded"] <= 3000
 
     def test_fifty_removes_two_wrong_options(self, client, existing_user, monkeypatch):
+        """Verify fifty removes two wrong options.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -474,6 +685,12 @@ class TestQuizPowerup:
         assert 0 not in body["removed"]  # 0 is correct for Q0
 
     def test_calc_extends_time_cap(self, client, existing_user, monkeypatch):
+        """Verify calc extends time cap.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -488,6 +705,12 @@ class TestQuizPowerup:
         assert body["points_awarded"] > 1000
 
     def test_hint_reveals_first_letter(self, client, existing_user, monkeypatch):
+        """Verify hint reveals first letter.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
@@ -498,6 +721,12 @@ class TestQuizPowerup:
 
 class TestQuizFinish:
     def _finish_quiz(self, client, monkeypatch, n=2):
+        """Play through and finish a mocked quiz via the API.
+
+        :param client: The client fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        :param n: The n fixture.
+        """
         _start_mocked_quiz(client, monkeypatch, n=n)
         client.get("/api/quiz/state")
         for i in range(n):
@@ -508,13 +737,28 @@ class TestQuizFinish:
             )
 
     def test_requires_login(self, client):
+        """Verify requires login.
+
+        :param client: The client fixture.
+        """
         assert client.post("/api/quiz/finish", json={}).status_code == 401
 
     def test_no_quiz_returns_404(self, client, existing_user):
+        """Verify no quiz returns 404.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        """
         _login(client, existing_user)
         assert client.post("/api/quiz/finish").status_code == 404
 
     def test_unfinished_quiz_rejected(self, client, existing_user, monkeypatch):
+        """Verify unfinished quiz rejected.
+
+        :param client: The client fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=2)
         assert client.post("/api/quiz/finish").status_code == 409
@@ -522,6 +766,13 @@ class TestQuizFinish:
     def test_finish_persists_stats_and_win(
         self, client, app, existing_user, monkeypatch
     ):
+        """Verify finish persists stats and win.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         from flask_security.utils import hash_password
 
         with app.app_context():
@@ -549,6 +800,13 @@ class TestQuizFinish:
             assert me.total_wins == 1
 
     def test_no_win_when_not_top(self, client, app, existing_user, monkeypatch):
+        """Verify no win when not top.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         from flask_security.utils import hash_password
 
         with app.app_context():
@@ -572,6 +830,13 @@ class TestQuizFinish:
             assert me.total_games_played == 1
 
     def test_finish_is_idempotent(self, client, app, existing_user, monkeypatch):
+        """Verify finish is idempotent.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         self._finish_quiz(client, monkeypatch, n=1)
         first = client.post("/api/quiz/finish").get_json()
@@ -584,6 +849,13 @@ class TestQuizFinish:
             assert me.total_games_played == 1
 
     def test_powerups_counted_at_finish(self, client, app, existing_user, monkeypatch):
+        """Verify powerups counted at finish.
+
+        :param client: The client fixture.
+        :param app: The app fixture.
+        :param existing_user: The existing_user fixture.
+        :param monkeypatch: The monkeypatch fixture.
+        """
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
         client.get("/api/quiz/state")

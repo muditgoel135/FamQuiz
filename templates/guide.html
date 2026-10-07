@@ -13,12 +13,14 @@
 
 <body class="{{ theme_class }}">
     {% include 'nav.html' %}
+    {% include 'game_notify.html' %}
     <main class="board-wrap d-flex flex-column gap-3">
         <section class="home-card" aria-label="{{ _('Getting started') }}">
             <h2 class="home-heading">{{ _('Getting started') }}</h2>
             <ol class="mb-0">
                 <li>{{ _('Sign up or log in.') }}</li>
                 <li>{{ _('Choose game options then Start game.') }}</li>
+                <li>{{ _('Wait for the countdown — the game opens automatically.') }}</li>
                 <li>{{ _('Answer questions fast — faster correct answers score more.') }}</li>
                 <li>{{ _('Top score wins the family game.') }}</li>
             </ol>
