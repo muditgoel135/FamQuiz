@@ -4,11 +4,13 @@ from app import User, db
 
 
 def _login(client, existing_user):
-    """Log in the fixture user via POST /login.
+    """
+    Log in the fixture user via POST /login.
 
     :param client: The client fixture.
     :param existing_user: The existing_user fixture.
     """
+
     client.post(
         "/login",
         data={
@@ -20,20 +22,24 @@ def _login(client, existing_user):
 
 class TestSettingsPage:
     def test_requires_login(self, client):
-        """Verify requires login.
+        """
+        Verify requires login.
 
         :param client: The client fixture.
         """
+
         resp = client.get("/settings", follow_redirects=False)
         assert resp.status_code == 302
         assert resp.headers["Location"].startswith("/login?next=")
 
     def test_loads_three_cards_single_save(self, client, existing_user):
-        """Verify loads three cards single save.
+        """
+        Verify loads three cards single save.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.get("/settings")
         assert resp.status_code == 200
@@ -53,12 +59,14 @@ class TestSettingsPage:
         assert 'id="settings-status"' in html
 
     def test_save_persists_all_cards(self, client, app, existing_user):
-        """Verify save persists all cards.
+        """
+        Verify save persists all cards.
 
         :param client: The client fixture.
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.post(
             "/api/settings/save",
@@ -91,32 +99,38 @@ class TestSettingsPage:
             assert user.status == "Do not disturb"
 
     def test_save_rejects_bad_language(self, client, existing_user):
-        """Verify save rejects bad language.
+        """
+        Verify save rejects bad language.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.post("/api/settings/save", json={"language": "Klingon"})
         assert resp.status_code == 400
 
     def test_save_rejects_bad_theme(self, client, existing_user):
-        """Verify save rejects bad theme.
+        """
+        Verify save rejects bad theme.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.post("/api/settings/save", json={"theme_mode": "neon"})
         assert resp.status_code == 400
 
     def test_save_rejects_bad_game_fields(self, client, app, existing_user):
-        """Verify save rejects bad game fields.
+        """
+        Verify save rejects bad game fields.
 
         :param client: The client fixture.
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         for bad in (
             {"difficulty_level": "extreme"},
@@ -126,18 +140,21 @@ class TestSettingsPage:
             {"status": "invisible"},
         ):
             assert client.post("/api/settings/save", json=bad).status_code == 400
+
         with app.app_context():
             user = User.query.filter_by(email=existing_user["email"]).one()
             assert (user.difficulty_level or "medium") == "medium"
             assert (user.default_num_questions or 10) == 10
 
     def test_settings_values_round_trip_to_form(self, client, app, existing_user):
-        """Verify settings values round trip to form.
+        """
+        Verify settings values round trip to form.
 
         :param client: The client fixture.
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.post(
             "/api/settings/save",
@@ -156,12 +173,14 @@ class TestSettingsPage:
         assert 'class="theme-dark"' in html
 
     def test_erase_resets_stats_keeps_account(self, client, app, existing_user):
-        """Verify erase resets stats keeps account.
+        """
+        Verify erase resets stats keeps account.
 
         :param client: The client fixture.
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         with app.app_context():
             user = User.query.filter_by(email=existing_user["email"]).one()
@@ -171,6 +190,7 @@ class TestSettingsPage:
             user.total_powerups_used = 3
             user.most_used_powerup = "50:50"
             db.session.commit()
+
         resp = client.post("/api/account/erase-data")
         assert resp.status_code == 200
         with app.app_context():
@@ -183,12 +203,14 @@ class TestSettingsPage:
             assert user.most_used_powerup is None
 
     def test_delete_removes_account(self, client, app, existing_user):
-        """Verify delete removes account.
+        """
+        Verify delete removes account.
 
         :param client: The client fixture.
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         assert client.get("/gameplay").status_code == 200
         resp = client.delete("/api/account")

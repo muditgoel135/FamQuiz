@@ -830,7 +830,7 @@ def _get_live_game():
     :rtype: GameSession or None
     """
     game = (
-        GameSession.query.filter(GameSession.status.in_(["lobby", "active"]))
+        GameSession.query.filter(GameSession.status.in_(["lobby", "active"]))  # type: ignore[attr-defined] -- SQLAlchemy column, Pylance sees str from __init__
         .order_by(GameSession.id.desc())
         .first()
     )

@@ -678,6 +678,43 @@ class GameSession(db.Model):
     expires_at = db.Column(db.Float, nullable=False, default=0.0)
     created_at = db.Column(db.Float, nullable=False, default=0.0)
 
+    def __init__(
+        self,
+        status: str = "lobby",
+        created_by_id: int | None = None,
+        num_questions: int = 10,
+        difficulty: str = "medium",
+        powerups_enabled: bool = True,
+        lobby_seconds: int = 300,
+        starts_at: float = 0.0,
+        expires_at: float = 0.0,
+        created_at: float = 0.0,
+    ):
+        """
+        Initialise a game lobby row.
+
+        Explicit so type checkers see the SQLAlchemy column kwargs.
+
+        :param status: Lobby status ("lobby", "active", "finished", "cancelled").
+        :param created_by_id: Id of the user who started the lobby.
+        :param num_questions: Number of quiz questions for the game.
+        :param difficulty: Difficulty level ('easy', 'medium', 'hard').
+        :param powerups_enabled: Whether power-ups are enabled.
+        :param lobby_seconds: Countdown seconds before the game goes live.
+        :param starts_at: Epoch seconds when the game starts.
+        :param expires_at: Epoch seconds when the game expires.
+        :param created_at: Epoch seconds when the row was created.
+        """
+        self.status = status
+        self.created_by_id = created_by_id
+        self.num_questions = num_questions
+        self.difficulty = difficulty
+        self.powerups_enabled = powerups_enabled
+        self.lobby_seconds = lobby_seconds
+        self.starts_at = starts_at
+        self.expires_at = expires_at
+        self.created_at = created_at
+
 
 GAME_STATUSES = ("lobby", "active", "finished", "cancelled")
 DEFAULT_LOBBY_SECONDS = 300
