@@ -22,7 +22,9 @@
         remindersOff: {{ _('Game reminders off — join from homepage')|tojson }},
         dndNote: {{ _('Do not disturb respected')|tojson }},
         join: {{ _('Join game')|tojson }},
-        dismiss: {{ _('Dismiss')|tojson }}
+        dismiss: {{ _('Dismiss')|tojson }},
+        leftNote: {{ _('You left this game')|tojson }},
+        rejoin: {{ _('Rejoin')|tojson }}
     };
 </script>
-<script src="{{ url_for('static', filename='game_notify.js') }}"></script>
+<script src="{{ url_for('static', filename='game_notify.js') }}?v=2"></script>

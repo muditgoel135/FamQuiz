@@ -198,6 +198,11 @@
                 var wait = parseInt(waitInput ? waitInput.value : '300', 10) || 300;
                 wait = Math.max(10, Math.min(wait, 300));
                 btn.disabled = true;
+                try {
+                    if ("Notification" in window && Notification.permission === "default") {
+                        Notification.requestPermission();
+                    }
+                } catch (e) { /* gesture-only; ignore failures */ }
                 fetch('{{ url_for("game_start") }}', {
                     method: 'POST',
                     headers: csrfHeaders(),

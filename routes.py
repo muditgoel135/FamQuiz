@@ -585,12 +585,29 @@ def gameplay():
     except (TypeError, ValueError):
         num = 10
     num = max(1, min(num, MAX_QUIZ_QUESTIONS))
+    try:
+        _quiz = session.get("quiz")
+        _live = _get_live_game()
+        if (
+            isinstance(_quiz, dict)
+            and _quiz.get("questions")
+            and _live is not None
+            and _quiz.get("game_id") != _live.id
+        ):
+            # Stale quiz from an older game (e.g. previous lobby): discard
+            # so it can never resume or preload under a new countdown.
+            session.pop("quiz", None)
+            _quiz = None
+        has_quiz = _quiz is not None
+    except Exception:
+        has_quiz = False
     return render_template(
         "gameplay.html",
         player_name=display_name_of(current_user),
         player_rank=rank_of(current_user.id),
         player_score=f"{current_user.score or 0:,}",
         num_questions=num,
+        has_quiz=has_quiz,
     )
 
 
@@ -607,6 +624,16 @@ def quiz_generate():
     :rtype: flask.Response
     """
 
+    # Shared-lobby gate: no questions before the countdown ends, so the
+    # family starts together (prevents preloading during the lobby).
+    _lobby = _get_live_game()
+    if _lobby is not None and _lobby.status == "lobby":
+        _now = time.time()
+        return jsonify({
+            "error": "Game hasn't started yet.",
+            "starts_in_ms": max(
+                0, int(((_lobby.starts_at or _now) - _now) * 1000)),
+        }), 409
     # LAN cost guard: one paid cloud call per 10s per user (tests exempt).
     if _rate_limited(_quiz_cooldown_key(), limit=1, window_s=10):
         return jsonify({"error": "Quiz cooling down. Wait a few seconds."}), 429
@@ -657,12 +684,38 @@ def quiz_generate():
         "powerup_counts": {},
         "double_armed": False,
         "finished": False,
+        # Binds this quiz to the live game (or None when solo): a quiz
+        # from an older lobby can never resume under a new countdown.
+        "game_id": _lobby.id if _lobby is not None else None,
     }
     session.pop("last_result", None)
     public = [
         {key: q[key] for key in ("question", "options") if key in q} for q in questions
     ]
     return jsonify({"questions": public, "total": len(public)})
+
+
+def _quiz_matches_live(quiz):
+    """
+    Check whether a session quiz belongs to the current live game.
+
+    A quiz generated under an older lobby (or solo before a lobby
+    started) must never resume, grade or persist under a new countdown.
+
+    :param quiz: The session quiz dict.
+    :return: True when there is no live game or the ids match.
+    :rtype: bool
+    """
+    try:
+        live = _get_live_game()
+    except Exception:
+        return True
+    if live is None:
+        return True
+    try:
+        return quiz.get("game_id") == live.id
+    except Exception:
+        return False
 
 
 @login_required
@@ -679,6 +732,9 @@ def quiz_state():
     quiz = _get_quiz()
     if quiz is None:
         return jsonify({"error": "No active quiz. Start a game first."}), 404
+    if not _quiz_matches_live(quiz):
+        session.pop("quiz", None)
+        return jsonify({"error": "Quiz expired. Rejoin the live game."}), 404
     if quiz.get("finished"):
         return jsonify({"error": "Quiz already finished."}), 409
     try:
@@ -719,6 +775,9 @@ def quiz_answer():
     quiz = _get_quiz()
     if quiz is None:
         return jsonify({"error": "No active quiz."}), 404
+    if not _quiz_matches_live(quiz):
+        session.pop("quiz", None)
+        return jsonify({"error": "Quiz expired. Rejoin the live game."}), 404
     if quiz.get("finished"):
         return jsonify({"error": "Quiz already finished."}), 409
     payload = request.get_json(silent=True) or {}
@@ -788,6 +847,9 @@ def quiz_powerup():
     quiz = _get_quiz()
     if quiz is None:
         return jsonify({"error": "No active quiz."}), 404
+    if not _quiz_matches_live(quiz):
+        session.pop("quiz", None)
+        return jsonify({"error": "Quiz expired. Rejoin the live game."}), 404
     if quiz.get("finished"):
         return jsonify({"error": "Quiz already finished."}), 409
     if not quiz.get("powerups_enabled"):
@@ -846,6 +908,9 @@ def quiz_finish():
         if last:
             return jsonify(last)
         return jsonify({"error": "No active quiz."}), 404
+    if not _quiz_matches_live(quiz):
+        session.pop("quiz", None)
+        return jsonify({"error": "Quiz expired. Rejoin the live game."}), 404
     if not quiz.get("finished"):
         return jsonify({"error": "Answer all questions first."}), 409
     total = quiz.get("score", 0)
@@ -977,6 +1042,16 @@ def _game_to_dict(game):
     """
     now = time.time()
     starts_in_ms = max(0, int(((game.starts_at or now) - now) * 1000))
+    try:
+        you_left = session.get("left_game_id") == game.id
+    except Exception:
+        you_left = False
+    try:
+        is_starter = (
+            current_user.is_authenticated and game.created_by_id == current_user.id
+        )
+    except Exception:
+        is_starter = False
     return {
         "id": game.id,
         "status": game.status,
@@ -988,6 +1063,8 @@ def _game_to_dict(game):
         "powerups_enabled": bool(game.powerups_enabled),
         "lobby_seconds": game.lobby_seconds,
         "join_url": "/gameplay",
+        "you_left": bool(you_left),
+        "is_starter": bool(is_starter),
     }
 
 
@@ -1107,7 +1184,34 @@ def game_join():
     game = _get_live_game()
     if game is None or game.status not in ("lobby", "active"):
         return jsonify({"error": "No live game. Start one from the homepage."}), 404
+    # (Re)joining clears a previous leave: the player is back in.
+    session.pop("left_game_id", None)
     return jsonify({"game": _game_to_dict(game)})
+
+
+@login_required
+def quiz_quit():
+    """
+    Leave the current quiz/game without saving stats.
+
+    Abandons the player's in-progress session quiz and records the live
+    lobby id in the session so the homepage notifier stops forcing an
+    auto-redirect (the lobby itself keeps running for everyone else).
+    Joining again clears the flag.
+
+    :return: JSON response with ``ok`` and ``left_game_id`` (or None).
+    :rtype: flask.Response
+    """
+    session.pop("quiz", None)
+    session.pop("last_result", None)
+    game = _get_live_game()
+    left_id = None
+    if game is not None and game.status in ("lobby", "active"):
+        left_id = game.id
+        session["left_game_id"] = game.id
+    else:
+        session.pop("left_game_id", None)
+    return jsonify({"ok": True, "left_game_id": left_id})
 
 
 @login_required
@@ -1302,6 +1406,13 @@ def register_routes(app):
         "/api/quiz/finish",
         endpoint="quiz_finish",
         view_func=quiz_finish,
+        methods=["POST"],
+    )
+
+    app.add_url_rule(
+        "/api/quiz/quit",
+        endpoint="quiz_quit",
+        view_func=quiz_quit,
         methods=["POST"],
     )
 

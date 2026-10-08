@@ -222,6 +222,12 @@
                 errBox.textContent = msg;
                 errBox.hidden = false;
             }
+            function showOk(msg) {
+                if (errBox) errBox.hidden = true;
+                if (!okBox) return;
+                okBox.textContent = msg;
+                okBox.hidden = false;
+            }
             function csrfHeaders() {
                 var h = { 'Content-Type': 'application/json' };
                 if (window.CSRF_TOKEN) h['X-CSRFToken'] = window.CSRF_TOKEN;

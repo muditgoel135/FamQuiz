@@ -85,9 +85,27 @@
                     </svg>
                 </button>
             </div>
-            <a href="{{ url_for('homepage') }}" class="game-quit btn btn-danger px-5">{{ _('Quit') }}</a>
+            <button type="button" id="game-quit" class="game-quit btn btn-danger px-5">{{ _('Quit') }}</button>
         </footer>
     </main>
+    <script>
+        (function () {
+            var quitBtn = document.getElementById("game-quit");
+            if (!quitBtn) return;
+            quitBtn.addEventListener("click", function () {
+                quitBtn.disabled = true;
+                var headers = {};
+                if (window.CSRF_TOKEN) headers["X-CSRFToken"] = window.CSRF_TOKEN;
+                fetch("{{ url_for('quiz_quit') }}", { method: "POST", headers: headers })
+                    .then(function () {
+                        window.location.href = "{{ url_for('homepage') }}";
+                    })
+                    .catch(function () {
+                        window.location.href = "{{ url_for('homepage') }}";
+                    });
+            });
+        })();
+    </script>
     <script>
         window.I18N = {
             noQuiz: {{ _('No active quiz. Start a game from the homepage.')|tojson }},
@@ -204,82 +222,108 @@
                 setPowerups(null);
             }
 
-            function showNoQuiz() {
+            var hasQuiz = {{ 'true' if has_quiz else 'false' }};
+            var statusUrl = "{{ url_for('game_status') }}";
+            var joinUrl = "{{ url_for('game_join') }}";
+            var generateUrl = "{{ url_for('quiz_generate') }}";
+
+            function gameStrings() {
+                return window.I18N_GAME || {};
+            }
+
+            function fmtCountdown(ms) {
+                var s = Math.max(0, Math.ceil(ms / 1000));
+                var m = Math.floor(s / 60);
+                var r = s % 60;
+                return (m < 10 ? "0" + m : "" + m) + ":" + (r < 10 ? "0" + r : "" + r);
+            }
+
+            function staticBoard(questionText, hintText) {
                 currentIndex = -1;
-                questionEl.textContent = window.I18N.noQuiz;
-                hintEl.hidden = true;
+                questionEl.textContent = questionText;
+                hintEl.hidden = !hintText;
+                hintEl.textContent = hintText || "";
                 optionBtns.forEach(function (btn) {
                     btn.textContent = "—";
                 });
                 setOptionsEnabled(false);
                 setPowerups(null);
                 progressEl.textContent = "Question –/–";
-                tryLobbyJoin();
-            }
-
-            var joinAttempted = false;
-            var joinRetryTimer = null;
-            function tryLobbyJoin() {
-                // Auto-join a live shared lobby with personalised questions
-                // (each player generates in their own language from lobby config).
-                // Retries for ~60s so a lobby created seconds later still joins.
-                if (joinAttempted) return;
-                joinAttempted = true;
-                questionEl.textContent = window.I18N.loadFail;
-                var headers = {};
-                if (window.CSRF_TOKEN) headers["X-CSRFToken"] = window.CSRF_TOKEN;
-                fetch("{{ url_for('game_join') }}", { method: "POST", headers: headers })
-                    .then(handleErrors)
-                    .then(function (body) {
-                        var game = body.game || {};
-                        // Respect the shared countdown: wait until live before
-                        // generating, so the family starts together.
-                        var waitMs = Math.max(0, game.starts_in_ms || 0);
-                        var genPayload = {
-                            num_questions: game.num_questions,
-                            difficulty: game.difficulty,
-                            powerups_enabled: game.powerups_enabled
-                        };
-                        if (waitMs > 2000) {
-                            questionEl.textContent = game.starts_in_ms
-                                ? ("…" + Math.ceil(waitMs / 1000) + "s")
-                                : window.I18N.loadFail;
-                            return new Promise(function (resolve) {
-                                setTimeout(function () {
-                                    post("{{ url_for('quiz_generate') }}", genPayload).then(resolve, resolve);
-                                }, Math.min(waitMs, 60000));
-                            });
-                        }
-                        return post("{{ url_for('quiz_generate') }}", genPayload);
-                    })
-                    .then(function () {
-                        loadState();
-                    })
-                    .catch(function () {
-                        // Allow a later lobby to still join without reload.
-                        joinAttempted = false;
-                        if (!joinRetryTimer) {
-                            joinRetryTimer = setTimeout(function () {
-                                joinRetryTimer = null;
-                                if (currentIndex < 0 && !finishedQuiz) tryLobbyJoin();
-                            }, 10000);
-                        }
-                        showNoQuizStatic();
-                    });
             }
 
             function showNoQuizStatic() {
-                currentIndex = -1;
-                // Do NOT lock joinAttempted here: tryLobbyJoin manages retries
-                // so a lobby created seconds later still joins.
-                questionEl.textContent = window.I18N.noQuiz;
-                hintEl.hidden = true;
-                optionBtns.forEach(function (btn) {
-                    btn.textContent = "—";
+                staticBoard(window.I18N.noQuiz, "");
+            }
+
+            function showLeft() {
+                // Opted out via Quit: never auto-rejoin from here; the
+                // banner above offers an explicit Rejoin instead.
+                var T = gameStrings();
+                staticBoard(
+                    T.leftNote || "You left this game",
+                    T.waitingTapJoin || "A family game is waiting — tap Join!"
+                );
+            }
+
+            function showWaitingTick(game) {
+                var T = gameStrings();
+                var ms = 0;
+                if (game && typeof game.starts_at === "number") {
+                    ms = Math.max(0, Math.round(game.starts_at * 1000 - Date.now()));
+                } else if (game) {
+                    ms = Math.max(0, game.starts_in_ms || 0);
+                }
+                staticBoard(
+                    (T.startingIn || "Game starting in") + " " + fmtCountdown(ms),
+                    ""
+                );
+            }
+
+            function joinAndGenerate() {
+                post(joinUrl, {}).then(function (body) {
+                    var game = (body && body.game) || {};
+                    return post(generateUrl, {
+                        num_questions: game.num_questions,
+                        difficulty: game.difficulty,
+                        powerups_enabled: game.powerups_enabled
+                    });
+                }).then(function () {
+                    loadState();
+                }).catch(function (err) {
+                    var msg = (err && err.message) || "";
+                    if (msg.indexOf("hasn't started") !== -1) {
+                        // Lost a race with the countdown: go back to waiting.
+                        setTimeout(entryLoop, 2000);
+                    } else if (msg.indexOf("cooling down") !== -1) {
+                        // Rate limiter (1 generate / 10s): back off, then retry.
+                        setTimeout(entryLoop, 11000);
+                    } else {
+                        showError(msg || window.I18N.loadFail);
+                    }
                 });
-                setOptionsEnabled(false);
-                setPowerups(null);
-                progressEl.textContent = "Question –/–";
+            }
+
+            function entryLoop() {
+                // Status-first entry: never generate before the lobby is
+                // live, never probe quiz state blind (avoids 404 noise),
+                // and never auto-rejoin a player who quit.
+                if (answering || finishedQuiz || currentIndex >= 0) return;
+                fetch(statusUrl, { headers: { "Accept": "application/json" } })
+                    .then(handleErrors)
+                    .then(function (body) {
+                        var game = (body && body.active_game) || null;
+                        if (!game) { showNoQuizStatic(); return; }
+                        if (game.you_left) { showLeft(); return; }
+                        if (game.status !== "active") {
+                            showWaitingTick(game);
+                            setTimeout(entryLoop, 2000);
+                            return;
+                        }
+                        joinAndGenerate();
+                    })
+                    .catch(function () {
+                        setTimeout(entryLoop, 4000);
+                    });
             }
 
             function loadState() {
@@ -288,8 +332,9 @@
                     .then(render)
                     .catch(function (err) {
                         var msg = (err && err.message) || "";
-                        if (msg.indexOf("No active quiz") !== -1) {
-                            showNoQuiz();
+                        if (msg.indexOf("No active quiz") !== -1 ||
+                            msg.indexOf("expired") !== -1) {
+                            entryLoop();
                         } else if (msg.indexOf("already finished") !== -1) {
                             // Reload after last answer but before finish:
                             // complete the quiz instead of stranding.
@@ -298,6 +343,12 @@
                             showError(err.message || window.I18N.loadFail);
                         }
                     });
+            }
+
+            if (hasQuiz) {
+                loadState();
+            } else {
+                entryLoop();
             }
 
             function answer(idx) {
@@ -326,7 +377,14 @@
                     })
                     .catch(function (err) {
                         answering = false;
-                        showError(err.message || window.I18N.submitFail);
+                        var msg = (err && err.message) || "";
+                        if (msg.indexOf("expired") !== -1) {
+                            // Quiz belongs to an older game: rejoin fresh.
+                            currentIndex = -1;
+                            entryLoop();
+                        } else {
+                            showError(msg || window.I18N.submitFail);
+                        }
                     });
             }
 
@@ -398,7 +456,8 @@
                     usePowerup(btn.dataset.kind, btn);
                 });
             });
-            loadState();
+            // Boot is handled above: loadState() with a session quiz,
+            // otherwise the status-first entryLoop (no blind 404).
         })();
     </script>
 </body>

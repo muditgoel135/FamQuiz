@@ -71,17 +71,24 @@
         }
         box.hidden = false;
         var label;
-        if (game.status === "active") {
+        if (game.you_left) {
+            label = t("leftNote", "You left this game");
+        } else if (game.status === "active") {
             label = t("live", "Game live — opening…");
         } else {
             label = t("waitingTapJoin", "A family game is waiting — tap Join!");
         }
         textEl.textContent = label;
+        if (joinBtn) {
+            joinBtn.textContent = game.you_left
+                ? t("rejoin", "Rejoin")
+                : t("join", "Join game");
+        }
         tickCountdown();
     }
 
     function tickCountdown() {
-        if (!current) {
+        if (!current || current.you_left) {
             countEl.textContent = "";
             return;
         }
@@ -94,24 +101,54 @@
         }
     }
 
-    function maybeNotify(game) {
-        if (!game || quiet) return;
-        if (notifiedFor === key(game)) return;
+    function notifiedKey(game) {
+        return "famquiz-notified-" + key(game);
+    }
+
+    function alreadyNotified(game) {
+        if (notifiedFor === key(game)) return true;
+        try {
+            return window.sessionStorage.getItem(notifiedKey(game)) === "1";
+        } catch (e) {
+            return false;
+        }
+    }
+
+    function markNotified(game) {
         notifiedFor = key(game);
+        try {
+            window.sessionStorage.setItem(notifiedKey(game), "1");
+        } catch (e) { /* private mode: fall back to in-memory */ }
+    }
+
+    function maybeNotify(game) {
+        // Once per game per browser (sessionStorage survives page
+        // navigation); never for the starter, quitters, or players
+        // already on the gameplay page. Permission is requested only
+        // on Join/Start clicks, never automatically.
+        if (!game || quiet || game.you_left || game.is_starter || onGameplay) return;
+        if (alreadyNotified(game)) return;
+        markNotified(game);
         try {
             if ("Notification" in window && Notification.permission === "granted") {
                 new Notification("FamQuiz", {
                     body: t("waitingTapJoin", "A family game is waiting — tap Join!")
                 });
-            } else if ("Notification" in window && Notification.permission === "default") {
-                try { Notification.requestPermission(); } catch (e) { /* ignore */ }
             }
         } catch (e) { /* notifications are best-effort */ }
     }
 
+    function requestNotifyPermission() {
+        try {
+            if ("Notification" in window && Notification.permission === "default") {
+                Notification.requestPermission();
+            }
+        } catch (e) { /* must be a user gesture; ignore failures */ }
+    }
+
     function maybeRedirect(game) {
         if (!game || game.status !== "active") return;
-        if (quiet || onGameplay) return;
+        if (quiet || onGameplay || game.you_left) return;
         if (dismissedFor === key(game)) return;
         window.location.href = gameplayUrl;
     }
@@ -180,7 +217,9 @@
                             expires_at: snap.expires_at,
                             num_questions: snap.num_questions,
                             difficulty: snap.difficulty,
-                            powerups_enabled: snap.powerups_enabled
+                            powerups_enabled: snap.powerups_enabled,
+                            you_left: !!snap.you_left,
+                            is_starter: !!snap.is_starter
                         });
                     }
                 }
@@ -201,6 +240,7 @@
 
     if (joinBtn) {
         joinBtn.addEventListener("click", function () {
+            requestNotifyPermission();
             var headers = {};
             var tok = csrfToken();
             if (tok) headers["X-CSRFToken"] = tok;

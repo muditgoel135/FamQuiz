@@ -2,6 +2,15 @@ import json
 import os
 import random  # re-exported: tests patch app.random for quiz power-ups
 import time  # re-exported alongside random
+import sys as _sys
+
+if __name__ == "__main__":
+    # Single module identity: `python app.py` runs this file as __main__,
+    # but routes.py does `from app import ...`. Without this alias the
+    # file executes twice and the circular import fails, so the server
+    # can never start via `python app.py`.
+    _sys.modules.setdefault("app", _sys.modules[__name__])
+
 from uuid import uuid4
 from dotenv import load_dotenv
 from flask import Flask, g, request, session
@@ -378,6 +387,7 @@ def build_quiz_messages(user, num_questions, difficulty=None):
         difficulty = "medium"
     language = (user.language or "English").strip()
     grade = (user.grade_occupation or "all ages").strip()
+
     # Sanitize free-text grade/subject for prompt injection: single line, capped.
     def _one_line(text, limit=80):
         return " ".join(str(text).split())[:limit] or "general"
@@ -478,9 +488,7 @@ def resolve_answer_index(item, options):
         if len(text) == 1 and text.upper() in ("A", "B", "C", "D"):
             return "ABCD".index(text.upper())
         matches = [
-            i
-            for i, o in enumerate(options)
-            if o.strip().lower() == text.lower()
+            i for i, o in enumerate(options) if o.strip().lower() == text.lower()
         ]
 
         if len(matches) == 1:
@@ -967,9 +975,9 @@ def create_app(config_overrides=None):
     # Tests use TESTING=True and are exempt from the fail-fast.
     _secret = app.config.get("SECRET_KEY", "")
     _salt = app.config.get("SECURITY_PASSWORD_SALT", "")
-    if (str(_secret).startswith("supersecret") or str(_salt).startswith("supersecret")) and not app.config.get(
-        "TESTING"
-    ):
+    if (
+        str(_secret).startswith("supersecret") or str(_salt).startswith("supersecret")
+    ) and not app.config.get("TESTING"):
         app.logger.warning(
             "SECRET_KEY/SECURITY_PASSWORD_SALT are defaults; "
             "set long random values in .env for LAN use."
@@ -1025,6 +1033,64 @@ def create_app(config_overrides=None):
 app = create_app()
 
 
+def _print_lan_urls(port):
+    """
+    Print reachable URLs (Werkzeug banners vary by version).
+
+    Older Werkzeug prints only a 127.0.0.1 line even when bound to
+    0.0.0.0, which looks localhost-only. These lines are explicit.
+    Never raises: startup must not depend on network probing.
+    """
+
+    lan_ip = None
+    try:
+        import socket as _socket
+
+        probe = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
+        try:
+            probe.connect(("8.8.8.8", 80))
+            lan_ip = probe.getsockname()[0]
+        finally:
+            probe.close()
+        if lan_ip in (None, "127.0.0.1", "0.0.0.0"):
+            lan_ip = None
+    except Exception:
+        lan_ip = None
+    tail_ip = None
+    try:
+        import subprocess as _subprocess
+
+        out = _subprocess.run(
+            ["tailscale", "ip", "-4"],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+        candidate = (out.stdout or "").strip().split()[0] if out.stdout else ""
+        if candidate and not candidate.startswith("127."):
+            tail_ip = candidate
+
+    except Exception:
+        tail_ip = None
+
+    print(f"FamQuiz on this computer: http://127.0.0.1:{port}", flush=True)
+    if lan_ip:
+        print(f"FamQuiz on your Wi-Fi:   http://{lan_ip}:{port}", flush=True)
+    else:
+        print("FamQuiz on your Wi-Fi:   (no LAN address found)", flush=True)
+
+    if tail_ip:
+        print(f"FamQuiz via Tailscale:   http://{tail_ip}:{port}", flush=True)
+    else:
+        print(
+            "FamQuiz via Tailscale:   (Tailscale not detected; "
+            "see README if playing far away)",
+            flush=True,
+        )
+
+
 if __name__ == "__main__":
     # Keep 0.0.0.0 for LAN + Tailscale sharing; never debug on LAN (RCE).
-    app.run(debug=False, host="0.0.0.0", port=int(os.getenv("PORT", 5000)))
+    _port = int(os.getenv("PORT", 5000))
+    _print_lan_urls(_port)
+    app.run(debug=False, host="0.0.0.0", port=_port)
