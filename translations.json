@@ -150,7 +150,10 @@
     "Game reminders off — join from homepage": "Recordatorios desactivados — únete desde el inicio",
     "Do not disturb respected": "No molestar respetado — sin apertura automática",
     "Waiting time:": "Tiempo de espera:",
-    "Wait for the countdown — the game opens automatically.": "Espera la cuenta atrás — el juego se abre automáticamente."
+    "Wait for the countdown — the game opens automatically.": "Espera la cuenta atrás — el juego se abre automáticamente.",
+    "You left this game": "Has salido del juego",
+    "Rejoin": "Volver a unirse",
+    "Game hasn't started yet.": "El juego aún no ha empezado."
   },
   "hi": {
     "How to use": "उपयोग कैसे करें",
@@ -302,7 +305,10 @@
     "Game reminders off — join from homepage": "खेल अनुस्मारक बंद हैं — होमपेज से शामिल हों",
     "Do not disturb respected": "परेशान न करें का सम्मान किया गया — स्वतः नहीं खुलेगा",
     "Waiting time:": "प्रतीक्षा समय:",
-    "Wait for the countdown — the game opens automatically.": "उलटी गिनती की प्रतीक्षा करें — खेल अपने आप खुल जाएगा।"
+    "Wait for the countdown — the game opens automatically.": "उलटी गिनती की प्रतीक्षा करें — खेल अपने आप खुल जाएगा।",
+    "You left this game": "आपने यह खेल छोड़ दिया है",
+    "Rejoin": "फिर से शामिल हों",
+    "Game hasn't started yet.": "खेल अभी शुरू नहीं हुआ है।"
   },
   "zh_Hans": {
     "How to use": "使用方法",
@@ -454,6 +460,9 @@
     "Game reminders off — join from homepage": "游戏提醒已关闭——请从首页加入",
     "Do not disturb respected": "已尊重请勿打扰——不会自动打开",
     "Waiting time:": "等待时间：",
-    "Wait for the countdown — the game opens automatically.": "等待倒计时——游戏将自动打开。"
+    "Wait for the countdown — the game opens automatically.": "等待倒计时——游戏将自动打开。",
+    "You left this game": "你已退出本局游戏",
+    "Rejoin": "重新加入",
+    "Game hasn't started yet.": "游戏尚未开始。"
   }
 }
