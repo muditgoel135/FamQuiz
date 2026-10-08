@@ -6,6 +6,7 @@ names so ``url_for('homepage')`` etc. keep working in templates and tests.
 """
 
 import json
+import os
 import random
 import time
 from typing import Any
@@ -517,14 +518,45 @@ def account_delete():
     return jsonify({"ok": True})
 
 
+def _serving_port():
+    """
+    Return the port this request actually arrived on.
+
+    Order: Host-header port (covers ``flask run --port 1234``, which never
+    touches the ``PORT`` env var) → ``PORT`` from ``.env`` → 5000 default.
+
+    :return: The port number to show in the Guide and share links.
+    :rtype: int
+    """
+    try:
+        host = request.host or ""
+        if ":" in host:
+            maybe = int(host.rsplit(":", 1)[-1])
+            if 1 <= maybe <= 65535:
+                return maybe
+    except (TypeError, ValueError):
+        pass
+    try:
+        env_port = int(os.getenv("PORT", 5000))
+        if 1 <= env_port <= 65535:
+            return env_port
+    except (TypeError, ValueError):
+        pass
+    return 5000
+
+
 def guide():
     """
     Render the how-to-play guide page.
 
+    Passes the actual serving port so the page never shows a stale
+    hardcoded port (local ``.env`` ``PORT`` or ``flask run --port`` may
+    override the 5000 default).
+
     :return: The rendered ``guide.html`` response.
     :rtype: flask.Response
     """
-    return render_template("guide.html")
+    return render_template("guide.html", port=_serving_port())
 
 
 def leaderboard():

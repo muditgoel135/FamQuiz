@@ -16,14 +16,45 @@
     {% include 'nav.html' %}
     {% include 'game_notify.html' %}
     <main class="board-wrap d-flex flex-column gap-3">
-        <section class="home-card" aria-label="{{ _('Getting started') }}">
-            <h2 class="home-heading">{{ _('Getting started') }}</h2>
+        <section class="home-card" aria-label="{{ _('Welcome to FamQuiz!') }}">
+            <h2 class="home-heading">{{ _('Welcome to FamQuiz!') }}</h2>
             <ol class="mb-0">
+                <li>
+                    {{ _('One computer runs the game (the host). Everyone else just taps the family link and plays.') }}
+                </li>
+                <li>
+                    {{ _('Running the host? Follow the README setup (Python, keys, start). Just playing? Keep reading below.') }}
+                </li>
                 <li>{{ _('Sign up or log in.') }}</li>
-                <li>{{ _('Choose game options then Start game.') }}</li>
+            </ol>
+        </section>
+        <section class="home-card" aria-label="{{ _('Join the family game') }}">
+            <h2 class="home-heading">{{ _('Join the family game') }}</h2>
+            <ol class="mb-0">
+                <li>
+                    {{ _('Same Wi-Fi: open the link the host shares and keep this port at the end:') }} <code>:{{ port }}</code>
+                </li>
+                <li>
+                    {{ _('Far away: everyone installs free Tailscale, signs in the same way, then opens the host’s link.') }}
+                </li>
                 <li>{{ _('Wait for the countdown — the game opens automatically.') }}</li>
+                <li>{{ _('A family game is waiting — tap Join!') }}</li>
+            </ol>
+        </section>
+        <section class="home-card" aria-label="{{ _('Play and score') }}">
+            <h2 class="home-heading">{{ _('Play and score') }}</h2>
+            <ol class="mb-0">
                 <li>{{ _('Answer questions fast — faster correct answers score more.') }}</li>
+                <li>
+                    {{ _('Fast correct answers earn up to 1500 points, slow ones 1000, wrong ones 0.') }}
+                </li>
+                <li>
+                    {{ _('Power-ups appear about 1 in 3 questions: Double points, Remove two options, Calculator, Hint.') }}
+                </li>
                 <li>{{ _('Top score wins the family game.') }}</li>
+                <li>
+                    {{ _('Do-not-disturb or switched-off reminders mean banner only — tap Join yourself.') }}
+                </li>
             </ol>
         </section>
         <section class="home-card" aria-label="{{ _('Changing your settings') }}">
@@ -34,13 +65,31 @@
                 <li>{{ _('Save — quiz questions use your language.') }}</li>
             </ol>
         </section>
-        <section class="home-card" aria-label="LAN + Tailscale">
-            <h2 class="home-heading">Play together on LAN + Tailscale</h2>
+        <section class="home-card" aria-label="{{ _('Your settings and data') }}">
+            <h2 class="home-heading">{{ _('Your settings and data') }}</h2>
             <ol class="mb-0">
-                <li>Host runs <code>python app.py</code> (binds <code>0.0.0.0:5000</code>, debug off).</li>
-                <li><strong>Same Wi-Fi (LAN):</strong> join <code>http://&lt;host-lan-ip&gt;:5000</code> (find via <code>ipconfig</code> / <code>ifconfig</code>). Allow Private firewall, block Public.</li>
-                <li><strong>Far away (Tailscale):</strong> install Tailscale on all devices, join same tailnet, then open <code>http://&lt;host-tailscale-ip&gt;:5000</code> (or MagicDNS name). No port-forwarding.</li>
-                <li>Start a game from the homepage — pick questions, difficulty, waiting time (10–300s). Everyone gets a banner + auto-open at live.</li>
+                <li>
+                    {{ _('Erase clears your scores but keeps your account. Delete removes your account forever and asks first.') }}
+                </li>
+            </ol>
+        </section>
+        <section class="home-card" aria-label="{{ _('If it looks wrong') }}">
+            <h2 class="home-heading">{{ _('If it looks wrong') }}</h2>
+            <ol class="mb-0">
+                <li>
+                    {{ _('No banner? A game may not be live — ask the host to press Start game.') }}
+                </li>
+                <li>
+                    {{ _('“No live game”? Open the same link as everyone (don’t mix localhost and network links).') }}
+                </li>
+                <li>
+                    {{ _('Question won’t load? Reload the page and answer each question once.') }}
+                </li>
+                <li>{{ _('No questions? The host’s quiz key may be missing — tell the host.') }}</li>
+                <li>
+                    {{ _('Link won’t open? Check Tailscale is on, same account, host app running, and this port present:') }} <code>:{{ port }}</code>
+                </li>
+                <li>{{ _('No password mail? Check spam or ask the host to check the mail setup.') }}</li>
             </ol>
         </section>
     </main>

@@ -212,7 +212,7 @@ You should see `passed` or `skipped` if keys missing.
 1. Terminal in `FamQuiz`, activate (Section 3), type `python app.py` Enter (or `python3 app.py`).
    You should see `Running on http://...:5000`, no red error. Keep window open.
 2. Open `http://127.0.0.1:5000` on host. You should see a Welcome card with Email and Password boxes and a blue Log in button. Sign up → choose Game options → **Start game** → wait countdown → answer.
-3. Others open LAN or Tailscale link from Sections 5A/5B.
+3. Others open LAN or Tailscale link from Sections 5A/5B. The in-app Guide page always shows your actual port number (from `.env` `PORT` or `flask run --port`), so follow it if yours isn't `5000`.
 4. Settings: profile, theme (applies instantly), language English / Mandarin Chinese / Spanish / Hindi. Or `/?lang=es`, `/?lang=hi`, `/?lang=zh_Hans` preview.
 5. Leaderboard shows best. Stats show games/wins/power-ups.
 6. Erase = clear my scores (keep account). Delete = remove me + cancel my lobbies.
