@@ -5,7 +5,7 @@
     data-gameplay-url="{{ url_for('gameplay') }}"
     data-authenticated="{{ '1' if current_user.is_authenticated else '0' }}"
     data-reminders="{{ '1' if (current_user.is_authenticated and current_user.game_reminders) else '0' }}"
-    data-user-status="{{ current_user.status if current_user.is_authenticated else '' }}">
+    data-user-status="{{ (current_user.status or 'Ready to play') if current_user.is_authenticated else '' }}">
     <span id="game-notify-dot" class="game-notify-dot" aria-hidden="true"></span>
     <span id="game-notify-text" class="game-notify-text"></span>
     <span id="game-notify-countdown" class="game-notify-countdown" aria-label="countdown"></span>

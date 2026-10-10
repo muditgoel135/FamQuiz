@@ -66,7 +66,19 @@ _RATE_BUCKETS: dict[str, list[float]] = {}
 
 
 def _rate_limited(key: str, limit: int, window_s: int) -> bool:
-    """Return True when key exceeded limit in window (and record hit)."""
+    """
+    Return True when key exceeded limit in window (and record hit).
+
+    :param key: Unique string to rate-limit (e.g. user+IP).
+    :type key: str
+    :param limit: Maximum allowed hits in the window.
+    :type limit: int
+    :param window_s: The time window in seconds.
+    :type window_s: int
+    :return: True if the key is rate-limited, False otherwise.
+    :rtype: bool
+    """
+
     try:
         from flask import current_app
 
@@ -74,6 +86,7 @@ def _rate_limited(key: str, limit: int, window_s: int) -> bool:
             return False
     except Exception:
         pass
+
     now = time.time()
     hits = _RATE_BUCKETS.get(key, [])
     hits = [t for t in hits if now - t < window_s]
@@ -86,6 +99,13 @@ def _rate_limited(key: str, limit: int, window_s: int) -> bool:
 
 
 def _quiz_cooldown_key() -> str:
+    """
+    Generate a unique key for rate-limiting quiz creation.
+
+    :return: A string representing the cooldown key.
+    :rtype: str
+    """
+
     try:
         uid = getattr(current_user, "id", "anon")
     except Exception:
@@ -100,6 +120,7 @@ def inject_theme():
     :return: Context dict with ``theme_class`` ("theme-dark" or "").
     :rtype: dict
     """
+
     try:
         dark = bool(
             current_user.is_authenticated
@@ -118,6 +139,7 @@ def inject_i18n():
         ``supported_locales`` and ``locale_to_language``.
     :rtype: dict
     """
+
     locale = get_locale()
     return {
         "_": _,
@@ -137,6 +159,7 @@ def _persist_lang_param():
     :return: None.
     :rtype: None
     """
+
     try:
         arg = request.args.get("lang")
         if arg in SUPPORTED_LOCALES:
@@ -152,6 +175,7 @@ def homepage():
     :return: The rendered ``index.html`` response.
     :rtype: flask.Response
     """
+
     from sqlalchemy import func as _func
 
     def _display_name(user):
@@ -162,6 +186,7 @@ def homepage():
         :return: Display name, email local part, or "".
         :rtype: str
         """
+
         if user is None:
             return ""
         name = (
@@ -180,6 +205,7 @@ def homepage():
         :return: "ready", "busy" or "offline".
         :rtype: str
         """
+
         value = (status or "").strip().lower()
         if value == "ready to play":
             return "ready"
@@ -194,6 +220,7 @@ def homepage():
         .limit(3)
         .all()
     )
+
     current_id = current_user.id if current_user.is_authenticated else None
     leaderboard = []
     for rank, user in enumerate(top_users, start=1):
@@ -213,6 +240,7 @@ def homepage():
         db.session.query(_func.coalesce(_func.sum(User.total_games_played), 0)).scalar()
         or 0
     )
+
     if current_user.is_authenticated:
         you_games = current_user.total_games_played or 0
         you_wins = current_user.total_wins or 0
@@ -231,6 +259,7 @@ def homepage():
         default_num = 10
         difficulty = ""
         avatar_initial = "A"
+
     try:
         default_num = int(default_num or 10)
     except (TypeError, ValueError):
@@ -262,6 +291,7 @@ def i18n_dict(locale):
     :return: JSON response with locale, html_lang and strings, or 404 for unsupported locales.
     :rtype: flask.Response
     """
+
     if locale not in SUPPORTED_LOCALES:
         return jsonify({"error": "Unsupported language."}), 404
     return jsonify(
@@ -281,6 +311,7 @@ def settings():
     :return: The rendered ``settings.html`` response.
     :rtype: flask.Response
     """
+
     try:
         num_questions = int(current_user.default_num_questions or 10)
     except (TypeError, ValueError):
@@ -317,17 +348,23 @@ def settings_save():
     :return: JSON response with ``ok`` and settings, or 400 with field errors.
     :rtype: flask.Response
     """
+
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        # Truthy non-dict JSON (list/str/number) has no .get: treat as empty
+        # instead of crashing with AttributeError 500.
+        payload = {}
 
     def _clean_str(value, limit=80):
         """
         Strip and validate an optional string settings field.
 
         :param value: The raw input value.
-        :param limit: Maximum allowed length after stripping.
+        :param limit: Maximum allowed length after stripping (default: 80).
         :return: Tuple of (cleaned value or None, error message or None).
         :rtype: tuple
         """
+
         if value is None:
             return None, None
         if not isinstance(value, str):
@@ -346,12 +383,14 @@ def settings_save():
             errors["display_name"] = err
     else:
         display_name = current_user.display_name
+
     if "nickname" in payload:
         nickname, err = _clean_str(payload.get("nickname"), 80)
         if err:
             errors["nickname"] = err
     else:
         nickname = current_user.nickname
+
     if "grade_occupation" in payload:
         grade, err = _clean_str(payload.get("grade_occupation"), 80)
         if err:
@@ -359,6 +398,7 @@ def settings_save():
     else:
         grade = current_user.grade_occupation
         err = None
+
     if "favorite_subject" in payload:
         favorite_subject, err = _clean_str(payload.get("favorite_subject"), 80)
         if err:
@@ -471,6 +511,7 @@ def account_erase_data():
     :return: JSON response with ``ok`` True.
     :rtype: flask.Response
     """
+
     current_user.score = 0
     current_user.best_score = 0
     current_user.total_games_played = 0
@@ -493,6 +534,7 @@ def account_delete():
     :return: JSON response with ``ok`` True.
     :rtype: flask.Response
     """
+
     user_id = current_user.id
     try:
         from flask_login import logout_user as _logout_user
@@ -528,6 +570,7 @@ def _serving_port():
     :return: The port number to show in the Guide and share links.
     :rtype: int
     """
+
     try:
         host = request.host or ""
         if ":" in host:
@@ -556,6 +599,7 @@ def guide():
     :return: The rendered ``guide.html`` response.
     :rtype: flask.Response
     """
+
     return render_template("guide.html", port=_serving_port())
 
 
@@ -575,6 +619,7 @@ def leaderboard():
         :return: "ready", "busy" or "offline".
         :rtype: str
         """
+
         value = (status or "").strip().lower()
         if value == "ready to play":
             return "ready"
@@ -619,15 +664,18 @@ def gameplay():
     num = max(1, min(num, MAX_QUIZ_QUESTIONS))
     try:
         _quiz = session.get("quiz")
-        _live = _get_live_game()
-        if (
-            isinstance(_quiz, dict)
-            and _quiz.get("questions")
-            and _live is not None
-            and _quiz.get("game_id") != _live.id
-        ):
+        # Mirror _get_quiz: only a dict with usable questions counts.
+        # Empty/corrupted/type-tampered session junk is discarded so it
+        # can never preload (fixes hasQuiz=true vs state-404 divergence).
+        if not isinstance(_quiz, dict) or not _quiz.get("questions"):
+            if _quiz is not None:
+                session.pop("quiz", None)
+            _quiz = None
+        elif not _quiz_matches_live(_quiz):
             # Stale quiz from an older game (e.g. previous lobby): discard
             # so it can never resume or preload under a new countdown.
+            # A finished solo quiz with no live game is kept (hasQuiz true)
+            # so the client can complete it via finishQuiz().
             session.pop("quiz", None)
             _quiz = None
         has_quiz = _quiz is not None
@@ -661,15 +709,25 @@ def quiz_generate():
     _lobby = _get_live_game()
     if _lobby is not None and _lobby.status == "lobby":
         _now = time.time()
-        return jsonify({
-            "error": "Game hasn't started yet.",
-            "starts_in_ms": max(
-                0, int(((_lobby.starts_at or _now) - _now) * 1000)),
-        }), 409
+        return (
+            jsonify(
+                {
+                    "error": "Game hasn't started yet.",
+                    "starts_in_ms": max(
+                        0, int(((_lobby.starts_at or _now) - _now) * 1000)
+                    ),
+                }
+            ),
+            409,
+        )
     # LAN cost guard: one paid cloud call per 10s per user (tests exempt).
     if _rate_limited(_quiz_cooldown_key(), limit=1, window_s=10):
         return jsonify({"error": "Quiz cooling down. Wait a few seconds."}), 429
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        # Truthy non-dict JSON (list/str/number) has no .get: treat as empty
+        # instead of crashing with AttributeError 500.
+        payload = {}
     raw_num = payload.get("num_questions")
     if raw_num is None:
         raw_num = current_user.default_num_questions or 10
@@ -738,6 +796,12 @@ def _quiz_matches_live(quiz):
     :return: True when there is no live game or the ids match.
     :rtype: bool
     """
+
+    if not isinstance(quiz, dict):
+        # Session-tampered shape (None/list/str): never treat as live;
+        # callers turn False into a clean 404 + session pop (no 500).
+        return False
+
     try:
         live = _get_live_game()
     except Exception:
@@ -761,6 +825,7 @@ def quiz_state():
     :return: JSON public state, or 404 when no quiz is active, 409 when finished.
     :rtype: flask.Response
     """
+
     quiz = _get_quiz()
     if quiz is None:
         return jsonify({"error": "No active quiz. Start a game first."}), 404
@@ -769,14 +834,18 @@ def quiz_state():
         return jsonify({"error": "Quiz expired. Rejoin the live game."}), 404
     if quiz.get("finished"):
         return jsonify({"error": "Quiz already finished."}), 409
+
     try:
         idx = quiz.get("index", 0)
-        if not isinstance(idx, int) or isinstance(idx, bool) or not 0 <= idx < len(
-            quiz.get("questions", [])
+        if (
+            not isinstance(idx, int)
+            or isinstance(idx, bool)
+            or not 0 <= idx < len(quiz.get("questions", []))
         ):
             raise IndexError("bad index")
     except Exception:
         return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
+
     if quiz.get("started_at") is None:
         quiz["started_at"] = time.time()
         if quiz.get("powerups_enabled") and quiz.get("offered") is None:
@@ -804,6 +873,7 @@ def quiz_answer():
     :return: JSON grading result, or 404/409 on missing, finished or stale quizzes.
     :rtype: flask.Response
     """
+
     quiz = _get_quiz()
     if quiz is None:
         return jsonify({"error": "No active quiz."}), 404
@@ -812,7 +882,12 @@ def quiz_answer():
         return jsonify({"error": "Quiz expired. Rejoin the live game."}), 404
     if quiz.get("finished"):
         return jsonify({"error": "Quiz already finished."}), 409
+
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        # Truthy non-dict JSON (list/str/number) has no .get: treat as empty
+        # instead of crashing with AttributeError 500.
+        payload = {}
     option = payload.get("option_index")
     qindex = payload.get("question_index")
     if (
@@ -827,21 +902,38 @@ def quiz_answer():
     # Timer must be started via quiz_state; answering blind gets no free max.
     if quiz.get("started_at") is None:
         return jsonify({"error": "Timer not started. Reload the question."}), 409
+
     try:
         questions = quiz["questions"]
         current = questions[quiz["index"]]
     except (IndexError, KeyError, TypeError):
         return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
-    started = quiz.get("started_at")
-    limit = quiz.get("limit_ms") or QUESTION_TIME_LIMIT_MS
-    elapsed = max(0, min(int((time.time() - started) * 1000), limit))
-    correct = option == current["answer_index"]
+
+    try:
+        # Bind once so Pylance narrows Unknown | None (a second .get()
+        # call would return a fresh Unknown each time).
+        started_raw = quiz.get("started_at")
+        limit_raw = quiz.get("limit_ms") or QUESTION_TIME_LIMIT_MS
+        if started_raw is None:
+            raise TypeError("bad timer")
+        started_f = float(started_raw)
+        limit_f = float(limit_raw)
+        if not limit_f > 0:
+            raise ValueError("bad limit")
+        elapsed = max(0, min(int((time.time() - started_f) * 1000), int(limit_f)))
+        limit = int(limit_f)
+        correct = option == current["answer_index"]
+        base_score = quiz.get("score", 0)
+        if isinstance(base_score, bool) or not isinstance(base_score, (int, float)):
+            raise TypeError("bad score")
+    except (TypeError, ValueError, KeyError, IndexError):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
     points = 0
     if correct:
         points = BASE_POINTS + round(SPEED_BONUS_POINTS * (1 - elapsed / limit))
         if quiz.get("double_armed"):
             points *= 2
-    quiz["score"] = quiz.get("score", 0) + points
+    quiz["score"] = base_score + points
     quiz["index"] += 1
     quiz["started_at"] = None
     quiz["offered"] = None
@@ -852,6 +944,7 @@ def quiz_answer():
     if finished:
         quiz["finished"] = True
     _store_quiz(quiz)
+
     return jsonify(
         {
             "correct": correct,
@@ -876,6 +969,7 @@ def quiz_powerup():
     :return: JSON power-up effect data, or 404/409 when unavailable.
     :rtype: flask.Response
     """
+
     quiz = _get_quiz()
     if quiz is None:
         return jsonify({"error": "No active quiz."}), 404
@@ -887,6 +981,10 @@ def quiz_powerup():
     if not quiz.get("powerups_enabled"):
         return jsonify({"error": "Power-ups are disabled."}), 409
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        # Truthy non-dict JSON (list/str/number) has no .get: treat as empty
+        # instead of crashing with AttributeError 500.
+        payload = {}
     kind = payload.get("kind")
     if (
         kind not in POWERUP_KINDS
@@ -895,27 +993,39 @@ def quiz_powerup():
         or quiz.get("started_at") is None
     ):
         return jsonify({"error": "Power-up not available."}), 409
+
     try:
         current = quiz["questions"][quiz["index"]]
     except (IndexError, KeyError, TypeError):
         return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
+
     counts = quiz.get("powerup_counts", {})
-    counts[kind] = counts.get(kind, 0) + 1
+    if not isinstance(counts, dict):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
+    try:
+        counts[kind] = counts.get(kind, 0) + 1
+    except (TypeError, ValueError, AttributeError):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
     quiz["powerup_counts"] = counts
     quiz["powerup_used"] = True
     data: dict[str, Any] = {"kind": kind}
-    if kind == "double":
-        quiz["double_armed"] = True
-    elif kind == "fifty":
-        wrong = [i for i in range(4) if i != current["answer_index"]]
-        data["removed"] = sorted(random.sample(wrong, 2))
-    elif kind == "calc":
-        quiz["limit_ms"] = (
-            quiz.get("limit_ms") or QUESTION_TIME_LIMIT_MS
-        ) + QUESTION_TIME_BONUS_MS
-        data["limit_ms"] = quiz["limit_ms"]
-    elif kind == "hint":
-        data["hint"] = current["options"][current["answer_index"]][:1]
+
+    try:
+        if kind == "double":
+            quiz["double_armed"] = True
+        elif kind == "fifty":
+            wrong = [i for i in range(4) if i != current["answer_index"]]
+            data["removed"] = sorted(random.sample(wrong, 2))
+        elif kind == "calc":
+            quiz["limit_ms"] = (
+                quiz.get("limit_ms") or QUESTION_TIME_LIMIT_MS
+            ) + QUESTION_TIME_BONUS_MS
+            data["limit_ms"] = quiz["limit_ms"]
+        elif kind == "hint":
+            data["hint"] = current["options"][current["answer_index"]][:1]
+    except (KeyError, IndexError, TypeError, ValueError):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
+
     _store_quiz(quiz)
     return jsonify(data)
 
@@ -932,6 +1042,7 @@ def quiz_finish():
         or 404/409 when no quiz is active or it is unfinished.
     :rtype: flask.Response
     """
+
     from sqlalchemy import func as _func
 
     quiz = session.get("quiz")
@@ -940,17 +1051,41 @@ def quiz_finish():
         if last:
             return jsonify(last)
         return jsonify({"error": "No active quiz."}), 404
+
+    if not isinstance(quiz, dict):
+        session.pop("quiz", None)
+        return jsonify({"error": "No active quiz."}), 404
+
     if not _quiz_matches_live(quiz):
         session.pop("quiz", None)
         return jsonify({"error": "Quiz expired. Rejoin the live game."}), 404
+
     if not quiz.get("finished"):
         return jsonify({"error": "Answer all questions first."}), 409
+    questions = quiz.get("questions")
+    if not isinstance(questions, list) or not questions:
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
+    counts = quiz.get("powerup_counts", {})
+    if not isinstance(counts, dict):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
+    try:
+        for _k in counts:
+            if _k not in POWERUP_LABELS:
+                raise KeyError(_k)
+        used = sum(counts.values())
+        if isinstance(used, bool) or not isinstance(used, (int, float)):
+            raise TypeError("bad counts")
+    except (TypeError, ValueError, KeyError, AttributeError):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
     total = quiz.get("score", 0)
+    if isinstance(total, bool) or not isinstance(total, (int, float)):
+        return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
     me = current_user
     others_best = (
         db.session.query(_func.max(User.best_score)).filter(User.id != me.id).scalar()
         or 0
     )
+
     is_win = total > others_best
     me.score = total
     if total > (me.best_score or 0):
@@ -958,15 +1093,19 @@ def quiz_finish():
     me.total_games_played = (me.total_games_played or 0) + 1
     if is_win:
         me.total_wins = (me.total_wins or 0) + 1
-    counts = quiz.get("powerup_counts", {})
-    used = sum(counts.values())
     if used:
         me.total_powerups_used = (me.total_powerups_used or 0) + used
-        me.most_used_powerup = POWERUP_LABELS[max(counts, key=counts.get)]
+        try:
+            # Lambda (not the bound .get overload) so Pylance can match
+            # max()'s key parameter; counts was validated as a dict above.
+            top_kind = max(counts, key=lambda kind: counts.get(kind, 0))
+            me.most_used_powerup = POWERUP_LABELS[top_kind]
+        except (KeyError, ValueError, TypeError):
+            return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
     db.session.commit()
     summary = {
         "quiz_score": total,
-        "total": len(quiz["questions"]),
+        "total": len(questions),
         "best_score": me.best_score or 0,
         "is_win": is_win,
         "powerups_used": used,
@@ -994,28 +1133,36 @@ def _refresh_game_status(game):
     :return: The same game, possibly with an updated status.
     :rtype: GameSession
     """
+
     now = time.time()
     if game.status in ("finished", "cancelled"):
         return game
+
     try:
         expires = float(game.expires_at or 0)
     except (TypeError, ValueError):
         expires = 0
+
     try:
         starts = float(game.starts_at or 0)
     except (TypeError, ValueError):
         starts = 0
+
     if now >= expires:
         game.status = "finished"
         db.session.commit()
     elif now >= starts and game.status == "lobby":
         game.status = "active"
         db.session.commit()
+
     return game
 
 
 def _expire_stale_games():
-    """Expire every stale lobby/active row (prevents ghost lobbies)."""
+    """
+    Expire every stale lobby/active row (prevents ghost lobbies).
+    """
+
     now = time.time()
     try:
         stale = GameSession.query.filter(
@@ -1023,7 +1170,9 @@ def _expire_stale_games():
         ).all()
     except Exception:
         return
+
     dirty = False
+
     for g in stale:
         try:
             expires = float(g.expires_at or 0)
@@ -1036,6 +1185,7 @@ def _expire_stale_games():
         elif now >= starts and g.status == "lobby":
             g.status = "active"
             dirty = True
+
     if dirty:
         try:
             db.session.commit()
@@ -1053,12 +1203,14 @@ def _get_live_game():
     :return: The live GameSession, or None when no lobby is active.
     :rtype: GameSession or None
     """
+
     _expire_stale_games()
     game = (
         GameSession.query.filter(GameSession.status.in_(["lobby", "active"]))  # type: ignore[attr-defined] -- SQLAlchemy column, Pylance sees str from __init__
         .order_by(GameSession.id.desc())
         .first()
     )
+
     if game is None:
         return None
     return game
@@ -1072,6 +1224,7 @@ def _game_to_dict(game):
     :return: Dict with id, status, countdown, config and join_url.
     :rtype: dict
     """
+
     now = time.time()
     starts_in_ms = max(0, int(((game.starts_at or now) - now) * 1000))
     try:
@@ -1112,7 +1265,12 @@ def game_start():
     :return: JSON response with the new game (201) or an error (409).
     :rtype: flask.Response
     """
+
     payload = request.get_json(silent=True) or {}
+    if not isinstance(payload, dict):
+        # Truthy non-dict JSON (list/str/number) has no .get: treat as empty
+        # instead of crashing with AttributeError 500.
+        payload = {}
     raw_num = payload.get("num_questions")
     if raw_num is None:
         raw_num = getattr(current_user, "default_num_questions", None)
@@ -1199,6 +1357,7 @@ def game_status():
     :return: JSON response with ``active_game`` (dict or None).
     :rtype: flask.Response
     """
+
     game = _get_live_game()
     if game is None or game.status not in ("lobby", "active"):
         return jsonify({"active_game": None})
@@ -1213,6 +1372,7 @@ def game_join():
     :return: JSON response with the live game, or 404 when none exists.
     :rtype: flask.Response
     """
+
     game = _get_live_game()
     if game is None or game.status not in ("lobby", "active"):
         return jsonify({"error": "No live game. Start one from the homepage."}), 404
@@ -1234,6 +1394,7 @@ def quiz_quit():
     :return: JSON response with ``ok`` and ``left_game_id`` (or None).
     :rtype: flask.Response
     """
+
     session.pop("quiz", None)
     session.pop("last_result", None)
     game = _get_live_game()
@@ -1255,6 +1416,7 @@ def game_cancel():
         or 403/404 when not permitted or no game is live.
     :rtype: flask.Response
     """
+
     game = _get_live_game()
     if game is None or game.status not in ("lobby", "active"):
         return jsonify({"error": "No live game to cancel."}), 404
@@ -1267,7 +1429,8 @@ def game_cancel():
 
 @login_required
 def game_events():
-    """Server-Sent Events: game-pending/game-live/game-cancelled + heartbeats.
+    """
+    Server-Sent Events: game-pending/game-live/game-cancelled + heartbeats.
 
     Query ?once=1 returns a single snapshot event and closes (for tests
     and restrictive proxies); otherwise streams until the game ends.
@@ -1275,6 +1438,7 @@ def game_events():
     :return: SSE response with snapshot/update/end events.
     :rtype: flask.Response
     """
+
     once = request.args.get("once") == "1"
 
     def _snapshot():
@@ -1310,6 +1474,7 @@ def game_events():
         :return: Generator yielding SSE-formatted snapshot/update/end events.
         :rtype: collections.abc.Generator
         """
+
         def _dedup_key(snap):
             # Countdown ms changes every second: exclude it from dedup so
             # we don't spam updates; the 1s JS ticker recomputes locally.

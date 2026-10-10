@@ -72,7 +72,9 @@
                 <div class="home-card h-100">
                     <h2 class="home-heading home-serif">{{ _('Game options') }}</h2>
                     <button type="button" id="home-start" class="home-start home-serif w-100"
-                        data-authenticated="{{ '1' if current_user.is_authenticated else '0' }}">{{ _('Start game') }}</button>
+                        data-authenticated="{{ '1' if current_user.is_authenticated else '0' }}">
+                        {{ _('Start game') }}
+                    </button>
                     <div id="home-error" class="home-error" role="alert" hidden></div>
                     <div class="home-option d-flex flex-wrap align-items-center gap-2">
                         <label for="home-num" class="home-label home-serif">
@@ -82,16 +84,21 @@
                             value="{{ default_num_questions }}" min="1" max="{{ max_questions }}">
                     </div>
                     <div class="home-option d-flex flex-wrap align-items-center gap-2">
-                        <span class="home-label home-serif" id="home-powerups-label">{{ _('Power-ups') }}</span>
+                        <span class="home-label home-serif" id="home-powerups-label">
+                            {{ _('Power-ups') }}
+                        </span>
                         <label class="home-switch" aria-labelledby="home-powerups-label">
                             <input type="checkbox" id="home-powerups" checked>
                             <span class="home-slider" aria-hidden="true"></span>
                         </label>
                     </div>
                     <div class="home-option d-flex flex-wrap align-items-center gap-2">
-                        <label for="home-difficulty" class="home-label home-serif">{{ _('Difficulty level:') }}</label>
+                        <label for="home-difficulty" class="home-label home-serif">
+                            {{ _('Difficulty level:') }}
+                        </label>
                         <select id="home-difficulty" name="difficulty_level" class="home-select">
-                            <option value="" {% if not difficulty_level %}selected{% endif %}>{{ _('Choose difficulty level') }}
+                            <option value="" {% if not difficulty_level %}selected{% endif %}>
+                                {{ _('Choose difficulty level') }}
                             </option>
                             {% for level in difficulty_options %}
                             <option value="{{ level }}" {% if difficulty_level==level %}selected{% endif %}>
@@ -101,7 +108,9 @@
                         </select>
                     </div>
                     <div class="home-option d-flex flex-wrap align-items-center gap-2">
-                        <label for="home-wait" class="home-label home-serif">{{ _('Waiting time:') }}</label>
+                        <label for="home-wait" class="home-label home-serif">
+                            {{ _('Waiting time:') }}
+                        </label>
                         <input type="number" id="home-wait" name="lobby_seconds" class="home-input"
                             value="300" min="10" max="300" step="10" aria-label="{{ _('Waiting time:') }}">
                     </div>
@@ -144,9 +153,13 @@
             {% else %}
             <div class="row g-3 mx-0">
                 <div class="col-12 text-center">
-                    <p class="home-stat home-serif mb-1">{{ _('Total games played in the family:') }} {{ family_games }}</p>
-                    <p class="home-login-prompt home-serif mb-0"><a
-                            href="{{ url_for_security('login') }}">{{ _('Log in') }}</a> {{ _('to track your stats and join the leaderboard!') }}</p>
+                    <p class="home-stat home-serif mb-1">
+                        {{ _('Total games played in the family:') }} {{ family_games }}
+                    </p>
+                    <p class="home-login-prompt home-serif mb-0">
+                        <a href="{{ url_for_security('login') }}">{{ _('Log in') }}</a> 
+                        {{ _('to track your stats and join the leaderboard!') }}
+                    </p>
                 </div>
             </div>
             {% endif %}

@@ -51,6 +51,7 @@ def _env_bool(*names, default=False):
 
     :param names: Environment variable names to check in order.
     :param default: Default value if none of the names are set.
+    :type default: bool
     :return: The boolean value of the first set environment variable, or the default.
     :rtype: bool
     """
@@ -68,6 +69,7 @@ def _env_port(*names, default=587):
 
     :param names: Environment variable names to check in order.
     :param default: Default port number if none of the names are set or valid.
+    :type default: int
     :return: The port number as an integer.
     :rtype: int
     """
@@ -140,6 +142,10 @@ BASE_CONFIG = {
     "SESSION_COOKIE_SAMESITE": "Lax",
     "REMEMBER_COOKIE_HTTPONLY": True,
     "REMEMBER_COOKIE_SAMESITE": "Lax",
+    # Cap request bodies at 1MB (Flask aborts larger with 413 before views).
+    # All real payloads (settings/quiz/lobby JSON, auth forms) are KB-scale,
+    # so this only stops abusive bloat; field validation still 400s first.
+    "MAX_CONTENT_LENGTH": 1_000_000,
 }
 
 # Applied when TESTING is enabled so test_client POSTs don't need tokens.
@@ -205,6 +211,8 @@ def translate(message, locale):
         return message
     if locale == "en":
         return message
+    if isinstance(locale, str):
+        locale = locale.replace("-", "_")
     return TRANSLATIONS.get(locale, {}).get(message, message)
 
 
@@ -357,7 +365,7 @@ def get_ollama_client():
     except ImportError as exc:
         raise QuizConfigError("Quiz service is not installed.") from exc
 
-    if not OLLAMA_API_KEY:
+    if not (OLLAMA_API_KEY or "").strip():
         raise QuizConfigError(
             "Quiz generation is not configured yet (missing OLLAMA_API_KEY). "
             "Add it to .env to enable quizzes."
@@ -398,7 +406,8 @@ def build_quiz_messages(user, num_questions, difficulty=None):
     # Finalised plan: Mandarin Chinese means Simplified (zh_Hans).
     extra = (
         " Use Simplified Chinese."
-        if language.strip().lower() in ("mandarin chinese", "chinese", "zh_hans")
+        if language.strip().lower()
+        in ("mandarin chinese", "chinese", "zh_hans", "zh-hans")
         else ""
     )
     return [
@@ -568,12 +577,16 @@ def parse_quiz_content(content):
 def _get_quiz():
     """
     Return the in-progress session quiz, or None.
+
     :return: The in-progress session quiz, or None if no quiz is in progress.
     :rtype: dict or None
     """
 
     quiz = session.get("quiz")
-    if not isinstance(quiz, dict) or not quiz.get("questions"):
+    if not isinstance(quiz, dict):
+        return None
+    questions = quiz.get("questions")
+    if not isinstance(questions, list) or not questions:
         return None
     return quiz
 
@@ -625,6 +638,7 @@ def generate_questions(user, num_questions, difficulty=None):
     :raises QuizConfigError: If the client library or API key is missing.
     :raises QuizGenerationError: If the model call fails or returns unusable output.
     """
+
     client = get_ollama_client()
     messages = build_quiz_messages(user, num_questions, difficulty)
     try:
@@ -718,7 +732,8 @@ class User(db.Model, UserMixin):
 
 
 class GameSession(db.Model):
-    """Family-wide game lobby: one pending/live game notifies all devices.
+    """
+    Family-wide game lobby: one pending/live game notifies all devices.
 
     Questions stay personalised per player (each client calls
     quiz_generate with the lobby config in their own language);
@@ -755,15 +770,25 @@ class GameSession(db.Model):
         Explicit so type checkers see the SQLAlchemy column kwargs.
 
         :param status: Lobby status ("lobby", "active", "finished", "cancelled").
+        :type status: str
         :param created_by_id: Id of the user who started the lobby.
+        :type created_by_id: int or None
         :param num_questions: Number of quiz questions for the game.
+        :type num_questions: int
         :param difficulty: Difficulty level ('easy', 'medium', 'hard').
+        :type difficulty: str
         :param powerups_enabled: Whether power-ups are enabled.
+        :type powerups_enabled: bool
         :param lobby_seconds: Countdown seconds before the game goes live.
+        :type lobby_seconds: int
         :param starts_at: Epoch seconds when the game starts.
+        :type starts_at: float
         :param expires_at: Epoch seconds when the game expires.
+        :type expires_at: float
         :param created_at: Epoch seconds when the row was created.
+        :type created_at: float
         """
+
         self.status = status
         self.created_by_id = created_by_id
         self.num_questions = num_questions
@@ -797,6 +822,7 @@ def _recipient_locale(recipient, context_user=None):
     :return: The resolved locale code.
     :rtype: str
     """
+
     lang = getattr(context_user, "language", None)
     if lang:
         locale = LANGUAGE_TO_LOCALE.get(lang.strip())
@@ -875,6 +901,7 @@ class TranslatedMailUtil(MailUtil):
         :param kwargs: Extra context; may include ``user`` for locale lookup.
         :return: The result of the parent ``send_mail`` call.
         """
+
         from flask import g as _g
 
         sentinel = object()
@@ -919,7 +946,7 @@ def display_name_of(user):
     """
     if user is None:
         return "Player"
-    name = (user.display_name or user.nickname or "").strip()
+    name = (user.display_name or "").strip() or (user.nickname or "").strip()
     if name:
         return name
     email = user.email or ""
@@ -937,6 +964,7 @@ def rank_of(user_id):
     :return: The 1-based rank, or 1 when the user is not ranked.
     :rtype: int
     """
+
     ordered_ids = [
         u.id
         for u in User.query.order_by(
@@ -956,6 +984,7 @@ def create_app(config_overrides=None):
     :param config_overrides: Optional dictionary of config overrides.
     :return: Flask application instance.
     """
+
     app = Flask(__name__)
 
     app.config.update(BASE_CONFIG)
@@ -1040,6 +1069,9 @@ def _print_lan_urls(port):
     Older Werkzeug prints only a 127.0.0.1 line even when bound to
     0.0.0.0, which looks localhost-only. These lines are explicit.
     Never raises: startup must not depend on network probing.
+
+    :param port: The port number the app is running on.
+    :type port: int
     """
 
     lan_ip = None

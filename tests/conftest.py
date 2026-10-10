@@ -51,6 +51,83 @@ def client(app):
 
 
 @pytest.fixture()
+def logged_client(client, existing_user):
+    """Log in existing_user and return the authenticated client."""
+    client.post(
+        "/login",
+        data={
+            "email": existing_user["email"],
+            "password": existing_user["password"],
+        },
+    )
+    return client
+
+
+@pytest.fixture()
+def second_user(app):
+    """Create a second user; return its email/password dict."""
+    from flask_security.utils import hash_password
+
+    email = "second@example.com"
+    password = "x" * 12
+    with app.app_context():
+        user_datastore.create_user(email=email, password=hash_password(password))
+        db.session.commit()
+    return {"email": email, "password": password}
+
+
+@pytest.fixture()
+def fake_ollama(monkeypatch):
+    """Install a canned Ollama client; factory(n) returns recorded calls.
+
+    Usage: calls = fake_ollama(n=2); client.post("/api/quiz/generate", ...)
+    """
+    import json as _json
+    from types import SimpleNamespace as _NS
+
+    import app as app_module
+
+    calls = []
+
+    def _factory(n=2, content=None):
+        body = content or _json.dumps(
+            {
+                "questions": [
+                    {
+                        "question": f"Question {i}?",
+                        "options": [f"Q{i} A", f"Q{i} B", f"Q{i} C", f"Q{i} D"],
+                        "answer_index": i % 4,
+                    }
+                    for i in range(n)
+                ]
+            }
+        )
+
+        class _Fake:
+            def chat(self, model="", messages=None, **kwargs):
+                calls.append({"model": model, "messages": messages, **kwargs})
+                return _NS(message=_NS(content=body))
+
+        monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
+        monkeypatch.setattr(app_module, "get_ollama_client", lambda: _Fake())
+        return calls
+
+    return _factory
+
+
+@pytest.fixture()
+def frozen_time(monkeypatch):
+    """Freeze routes.time.time at FIXED; returns a setter for new values."""
+    import routes as routes_module
+
+    state = {"now": 1700000000.0}
+    monkeypatch.setattr(
+        routes_module.time, "time", lambda: state["now"]
+    )
+    return state
+
+
+@pytest.fixture()
 def existing_user(app):
     """Create a pre-registered user via the datastore (bypasses the form).
 
