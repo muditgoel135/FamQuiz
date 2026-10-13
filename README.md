@@ -1,92 +1,97 @@
 # FamQuiz – Play Together, Even on Screens
 
-FamQuiz is a small family quiz game that runs on **one** family computer (we call it the **host**).
-Everyone else joins from a phone or laptop, answers fun questions, and the fastest correct answers score more.
-Top score wins. Power-ups appear sometimes. There is a leaderboard and stats.
+FamQuiz is a family quiz game. Pick **one computer to run the game** (we call it the **main computer**). That computer must stay on and awake while you play. Everyone else plays in a web browser on a phone or laptop — nothing to install.
+
+Fast correct answers get more points. During the game you may get bonus helpers (for example: double points, remove 2 wrong answers, extra time, or a hint showing the first letter). The highest total wins. You can see best-ever scores on the Leaderboard page and your own games/wins/bonuses on the Stats page.
 
 > You do **not** need to know code. Follow the steps in order. Each step tells you what you should see.
 > If something looks different, go to [If something goes wrong](#if-something-goes-wrong).
 
-**What you need:**
+**What you need before you start (about 20–30 minutes):**
 
-* One host computer (Windows 10/11, Mac, or Linux) – about 10 MB free.
-* Family phones/laptops.
-* Same Wi-Fi **or** Tailscale (free, for far-away family – see Section 5 below).
-* Two free keys: Ollama (makes questions) + Mailjet (sends password-reset mails). Both have free tiers.
+* One main computer to run the game (any recent Windows 10/11 or Mac; Linux also works). It stays on while playing. You need about 10 MB free space and an admin password for it.
+* Family phones/laptops with a browser (Chrome, Safari, or Edge). Players do not install anything, but each player creates an account with an email + password inside the game.
+* Everyone in the same house: connect all devices to the same home Wi-Fi name (watch out: guest Wi-Fi, extenders, or phone hotspots often count as a *different* network).
+* Someone far away: you will install a free app called Tailscale so far-away phones act like they are in the same house — see Section 5.
+* An email inbox you can open (for sign-ups and password resets). You will create 2 free website accounts — Ollama (writes quiz questions) and Mailjet (sends “forgot password” emails) — and copy 2 long secret passwords into setup once. No credit card needed.
+* Internet on the main computer for setup (install takes 2–5 minutes).
 
-**Pictures in this guide:** every step describes what you should see on your screen. Where addresses or keys are shown, yours will have your own values – never share photos of your keys.
+**About examples in this guide:** every step describes what you should see on your screen. Example numbers like `192.168.1.20` or `100.87.45.12` and example keys are *not* yours — never type the example literally, always use your own numbers. Never share photos of your secret passwords — anyone with the photo can spend your free allowance or read your mail account.
 
 ---
 
 ## Words we will use
 
-* **Terminal / PowerShell / Console** – a black window where you type one line and press Enter. It only does what you type. Nothing breaks by opening it.
-* **Python** – a free helper the app needs. You install it once.
-* **`.venv`** – the app’s private box. Keeps FamQuiz separate from other things.
-* **`.env`** – a small secret note with your keys. Never share it or post a photo of it.
-* **IP address** – a computer’s house number, like `192.168.1.20` at home or `100.87.45.12` on Tailscale. You always add `:5000` at the end for FamQuiz.
-* **Host** – the one computer that runs `python app.py`. Others just open the link.
+* **Main computer (host)** – the one computer that runs the game. Everyone else just opens a web address on a phone/laptop.
+* **Instruction window (called PowerShell on Windows, Terminal on Mac/Linux)** – a window where you type one instruction line at a time, then press the big Enter key to run it. Just opening it changes nothing. Leave it open while you play — closing it stops the game for everyone.
+* **Private settings file (.env)** – a text file inside the `FamQuiz` folder on the main computer that holds your secret passwords. Never share or photograph it. It starts with a dot, so it may be hidden in File Explorer/Finder — it is still there.
 
-## 0. Open a terminal (do this first)
+You will see two more ideas later, only when you need them: **IP address** (the main computer’s house number — see Section 5) and **`:5000`** (the door number for FamQuiz — always keep it at the end of the link).
+
+## 0. Open an instruction window (do this first, leave it open)
 
 **Windows:**
 
-1. Press Start, type `PowerShell`, open Windows PowerShell.
-2. You should see a blue window with `PS C:\Users\...>` waiting.
+1. Press the Windows key, type `PowerShell`, click Windows PowerShell.
+2. You should see a window with a line ending in `>` waiting for typing.
 
 **Mac:**
 
-1. Press Cmd + Space, type `Terminal`, press Enter.
-2. You should see your name and `$` waiting.
+1. Hold `Cmd` (⌘) + press `Space`, type `Terminal`, press Enter, click the `Terminal` app.
+2. You should see your name and a prompt waiting for typing.
 
 **Linux (Ubuntu):**
 
 1. Press Ctrl + Alt + T.
-2. You should see `$` waiting.
+2. You should see a prompt waiting for typing.
 
-How to paste: Windows `Ctrl+V`, Mac `Cmd+V`, Linux `Ctrl+Shift+V`. Press Enter to run.
+To use a line from this guide: copy it, click *inside* the window, paste (Windows `Ctrl+V`, Mac `Cmd+V`, Linux `Ctrl+Shift+V` or right-click → Paste), then press **Enter** to run. It means: click inside, paste/type exactly, press Enter, wait until it finishes.
+
+If search shows nothing or two PowerShells, pick **Windows PowerShell** (not ISE). If you get lost, stop here — you only need this window open for the next steps.
 
 ---
 
-## 1. Install Python (once)
+## 1. Install Python (once, ~5 minutes)
 
-You need Python 3.10 or newer.
+FamQuiz needs a free helper called Python. You only install it once.
 
-**Check first – type this and press Enter:**
+**Check first — type this exactly and press Enter:**
 
 ```text
 python --version
 ```
 
-You should see `Python 3.10...` or `3.11`, `3.12`, `3.13`. If yes, skip to Section 2.
+Good: you see `Python 3.10.x` or higher (first number 10, 11, 12, or 13 — for example `Python 3.12.3`). Skip to Section 2.
 
-**If it says “not found”:**
+Not good: you see an error, nothing happens, a Microsoft Store page opens, or the number starts with 2, 7, 8, or 9 (for example `Python 3.9`). Follow below for your computer. The Store opening means Python is *not* installed — install from python.org instead.
 
-* **Windows:** Go to `https://www.python.org/downloads/` → Download → Run installer → Tick **“Add python.exe to PATH”** (checkbox on the first page) → Install. Close and reopen PowerShell, try `python --version` again.
-* **Mac:** Go to `https://www.python.org/downloads/` → Download pkg → Install. Or if you use Homebrew: `brew install python`. Try `python3 --version`. If only `python3` works, use `python3` everywhere below instead of `python`.
-* **Linux:** Type `sudo apt update` Enter, then `sudo apt install python3 python3-venv -y` Enter. Try `python3 --version`.
+**If you need to install:**
 
-You should see a version number. That is success.
+* **Windows:** Open `https://www.python.org/downloads/` → click the yellow Download button → open the downloaded file → on the **very first page** tick the small box at the bottom that says **Add to PATH** → Install. If you missed that box, run the installer again → Modify → tick it. Close the instruction window and open a new one, try `python --version` again.
+* **Mac:** Open `https://www.python.org/downloads/` → Download → open the downloaded file and click through. Then try `python3 --version`. Tip: on Macs always type `python3` (with a 3) everywhere below instead of `python`.
+* **Linux (Ubuntu):** Type `sudo apt update`, press Enter (type your computer password when asked — you won’t see it while typing, that is normal), then `sudo apt install python3 python3-venv -y`, press Enter. Try `python3 --version`.
+
+Success = you see a version number starting with 10 or higher.
 
 ## 2. Get the FamQuiz folder
 
-1. Download the FamQuiz ZIP from GitHub → Unzip (double-click).
-2. You should see a folder named `FamQuiz` with files like `app.py`, `.env.example`.
-3. Move it somewhere easy, e.g. Documents.
+1. Download: open the GitHub page for FamQuiz → click the green **Code** button → **Download ZIP**.
+2. Open your Downloads folder → double-click the ZIP to open it → drag the `FamQuiz` folder inside to Documents (easy to find). Note: unzipping often creates `FamQuiz-main` inside — open it and use the inner folder that contains `app.py`.
+3. You should see a folder named `FamQuiz` with files like `app.py`. On Windows/Mac file endings like `.py` or dot-files like `.env.example` may be hidden — that is normal.
 
-No `git` needed for family play.
+**Open the instruction window inside that folder:**
 
-**Open terminal inside that folder:**
+* Windows: open the `FamQuiz` folder in File Explorer → click the top address bar → type `powershell` → Enter.
+* Mac: open Terminal, type `cd ` (with a space), drag the `FamQuiz` folder into the window, press Enter. Or enable right-click → New Terminal at Folder.
+* Linux: right-click inside the folder → Open in Terminal.
 
-* Windows: open `FamQuiz` in File Explorer → click address bar → type `powershell` → Enter.
-* Mac: right-click `FamQuiz` → New Terminal at Folder.
-* Linux: right-click → Open in Terminal.
+Check: type `ls` and press Enter (`ls` works on Windows too). You should see `app.py` in the list. If not, you are in the wrong folder — go one level in/out and try again.
 
-Type `dir` (Windows) or `ls` (Mac/Linux) Enter. You should see `app.py`.
+## 3. Make FamQuiz its own private helper folder (once, copy-paste)
 
-## 3. Make the private box and install (copy-paste)
+This keeps FamQuiz’s parts separate from other programs. Make sure your instruction window is open *inside* the `FamQuiz` folder (Section 2 check shows `app.py`).
 
-Type one line at a time, press Enter after each. Wait until it finishes.
+Type one line at a time, press Enter after each. Wait until it finishes. Needs Wi-Fi, takes a few minutes.
 
 **Windows:**
 
@@ -104,84 +109,91 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-You should see many lines installing, ending with no red error. If Windows blocks `Activate.ps1`, type `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` Enter, then try again.
+What you should see:
 
-Next, make your secret note:
+* After line 1: no message, just a new prompt (it created a `.venv` folder).
+* After line 2: `(.venv)` appears at the start of the line. That means it worked. You must repeat this line every time you close and reopen the window.
+* After line 3: many lines saying `Collecting...` / `Successfully installed...`. Wait until the prompt returns. Yellow warnings are okay; red `ERROR: No such file` means you are in the wrong folder.
+
+If line 2 on Windows is red about “scripts are disabled on this system”: that is just Windows being cautious. This is safe, one-time, no admin needed. Copy-paste this line, press Enter, type `Y` if it asks, then try line 2 again:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+Next, make your private settings copy (don’t fill it yet — that is Sections 4 and 6):
 
 * Windows: `copy .env.example .env`
 * Mac/Linux: `cp .env.example .env`
 
-You should now have a file named `.env`. Open it with Notepad (Win) / TextEdit (Mac) / Gedit (Linux). Do not share it. Your terminal should show the install finishing with no red error and `Running on http://127.0.0.1:5000` after `python app.py`.
+Check: `ls -a` (or `dir` on Windows) should show both `.env.example` (template — never edit) and `.env` (your copy — you will fill in Sections 4 and 6). If you can’t see `.env` in Explorer/Finder, it is hidden because it starts with a dot — it is still there.
+
+Open `.env` only with a plain-text editor: Notepad on Windows, and on Mac use TextEdit → Format → Make Plain Text first (rich text breaks the file). On Linux use Text Editor/Gedit. Never let it save as `.env.txt` — turn off “hide extensions” if unsure. Do not share this file.
 
 ---
 
-## 4. Ollama – makes the questions (detailed, beginner)
+## 4. Let Ollama write questions for you (only the main computer does this, ~5 minutes)
 
-**What:** Ollama cloud writes your quiz questions. The app needs **one** family key. The key stays on the host only, never on players’ phones.
+**What:** Ollama is a website that writes quiz questions. You make one secret password (called a key) and paste it into your quiz files. Players skip this — only the person running the main computer does it. This is free, no credit card.
 
 **Steps – exact clicks:**
 
-1. Go to `https://ollama.com` → **Sign in** (Google or GitHub is fine).
-2. Click your face/icon → **API keys** → **New key** → Name it `FamQuiz` → **Create** → **Copy**.
-   You see the key once. If you lose it, make a new one. On the API keys page you should see your `FamQuiz` key name with a Delete option next to it.
-3. Open `.env` in Notepad/TextEdit. Find the line `OLLAMA_API_KEY=`.
-4. Paste after `=`. It looks like `OLLAMA_API_KEY=abc123...`. Save and close. Your `.env` should show the pasted key on that line and `MAIL_*` lines below it.
-5. Leave `OLLAMA_MODEL=gpt-oss:20b` as is. Free keys can use: `gemma4:31b, gpt-oss:120b, gpt-oss:20b, nemotron-3-nano:30b, nemotron-3-super, nemotron-3-ultra`. Do not change unless asked.
-6. Restart the app (see Section 6). Start a game with 2 questions. If questions appear, it works.
+1. Go to `https://ollama.com` → **Sign in** (Sign in with Google or GitHub is fine).
+2. Click your face/icon → **API keys** → **New key** → Name it `FamQuiz` → **Create** → **Copy**. Keep that browser tab open until Step 4 is done — you see the key only once (a long mix of letters/numbers, 40+ characters). If you lose it, make a new one. On the API keys page you should see your `FamQuiz` key name with a Delete option next to it.
+3. In your `FamQuiz` folder, open the file named `.env` (your copy from Section 3) in Notepad/TextEdit. Find the line `OLLAMA_API_KEY=` with nothing after `=`.
+4. Click right after `=`, Paste, Save and close. Good = `OLLAMA_API_KEY=` followed immediately by the long code on one line, no spaces, no quotes, no line break. Bad = extra space or the file saved as `.env.txt`. Your `.env` already has mail lines *above* this line — that is normal, leave them for Section 6.
+5. You won’t see a line starting `OLLAMA_MODEL` — that is normal, it is commented out in the template. Leave it. The app already uses the free default. Ignore model names like `gpt-oss:20b` unless a helper tells you to change it.
+6. Restart the app so it reads the key: in the black window press `Ctrl+C` to stop, then run `python app.py` again (or `python3 app.py` on Mac). In the browser start a new game with Number of Questions = 2. If 2 questions appear, it works.
 
-**Safety:** Never post a photo of the key. If leaked, go back to Ollama → Delete → New key → paste again.
+**Safety:** Treat the key like a bank password. Don’t send it in WhatsApp/email/screenshots — strangers can spend your free allowance. If you shared it: Ollama site → API keys → Delete `FamQuiz` → New key → paste the new one into `.env` → restart.
 
-**If you skip this:** Quiz shows “not configured yet (missing OLLAMA_API_KEY)”. Everything else still opens.
+**If you skip this:** starting a quiz shows “Quiz questions aren’t turned on yet.” Everything else still opens.
 
-**Cheap check (optional, spends 1–2 credits):**
+> For helpers only — optional check (uses 1–2 free credits): with `(.venv)` active run `pytest tests/test_ollama_live.py -q -k "20b"`. `passed` = works, `skipped` = no key found so the test did nothing, `failed` = copy-paste error.
 
-```bash
-pytest tests/test_ollama_live.py -q -k "20b"
-```
+## 5. Play with far-away family with Tailscale (detailed, beginner)
 
-You should see `passed`. Missing key = tests skip.
+**What:** In the same house, open the main computer’s address directly. Far away, everyone installs the free Tailscale app so far-away phones act like they are in the same house. No router changes. One person (the host) keeps the game running on their laptop the whole time.
 
-## 5. Tailscale – play with far-away family (detailed, beginner)
+**5A. Same Wi-Fi (try this first) — host only does step 1:**
 
-**What:** Same Wi-Fi = open host address directly. Far away = Tailscale makes a free private tunnel so far family looks like same room. No router changes. Host still runs with `0.0.0.0:5000`, debug off (safe).
+1. On the main computer, find its home number:
+   * Windows: type `ipconfig` Enter → look under Wi-Fi for `IPv4 Address ... 192.168.x.x` (pick Wi-Fi, not Ethernet/virtual).
+   * Mac/Linux: type `ip a` Enter → look for `192.168.x.x` or `10.x.x.x` on Wi-Fi.
+   Write it down. You should see an `IPv4 Address` like `192.168.1.23` — yours will differ.
+2. Players: in the phone/laptop browser type `http://YOUR-numbers:5000` — for example if the host saw `192.168.1.23`, type `http://192.168.1.23:5000`. Keep `:5000` at the end (that is FamQuiz’s door number). Do NOT copy `192.168.x.x` literally. Use `http://`, not `https://`.
+3. Windows firewall: if asked, tick **Private**, untick Public → Allow. Keep Public blocked.
 
-**5A. Same Wi-Fi (try this first):**
+**5B. Far away – Tailscale step-by-step (everyone does this, same account):**
 
-1. On host, find home number:
-   * Windows: type `ipconfig` Enter → look for `IPv4 Address ... 192.168.x.x`.
-   * Mac/Linux: type `ifconfig` or `ip a` Enter → `192.168.x.x` or `10.x.x.x`.
-2. Players open `http://192.168.x.x:5000` (use YOUR numbers, keep `:5000`).
-3. Windows firewall: Allow on Private, keep Public blocked if asked. Your terminal should show an `IPv4 Address` like `192.168.x.x` – use your numbers with `:5000` at the end.
-
-**5B. Far away – Tailscale step-by-step:**
-
-1. Go to `https://tailscale.com` → **Get Started** → **Personal (free)** → Sign up. **Whole family must use the same login way** (e.g. all Google). If someone used a different account, Admin → Machines → Invite.
-2. Install:
-   * Windows 10/11: Download Windows → Run → Next → taskbar arrow → Tailscale icon → **Log in** → browser **Approve**.
-   * Mac: App Store → Tailscale → Open → Log in. Or `brew install --cask tailscale`.
-   * Linux: paste `curl -fsSL https://tailscale.com/install.sh | sh` Enter, then `sudo tailscale up` Enter → click printed login link.
-   * iPhone/Android: Store → Tailscale → Log in → switch **Connected ON**.
-3. Check: Admin → Machines shows all devices. Or type `tailscale status` Enter – you should see active. Note the host's `100.x` address for the next step.
-4. Find host address: on host type `tailscale ip -4` Enter. You see `100.87.45.12` (yours differs). Optional easier name: Admin → DNS → MagicDNS ON → use `hostname.tailabcd.ts.net`.
-5. Share **one** link in family chat: `http://100.87.45.12:5000` (keep `:5000`).
+1. Everyone: go to `https://tailscale.com` → **Get Started** → **Personal (free)** → Sign up. **Whole family must use the same login way** (for example all tap Continue with Google). If someone used a different email, the host goes to the Admin Console (`login.tailscale.com/admin/machines`) → Invite them.
+2. Install and log in (host + every player, phones too):
+   * Windows 10/11: Download Windows → Run → Next → click `^` in the taskbar → Tailscale icon → **Log in** → click **Approve** in the browser.
+   * Mac: App Store → Tailscale → Open → Log in.
+   * iPhone/Android: Store → Tailscale → Log in → switch **Connected ON**. Leave it ON during the game, open the link in Safari/Chrome.
+   * Linux (helpers): paste `curl -fsSL https://tailscale.com/install.sh | sh` Enter, then `sudo tailscale up` Enter → click the printed login link.
+3. Check: host opens Admin → Machines and sees all devices green, or types `tailscale status` Enter and sees devices active.
+4. Find the host’s Tailscale number — host only: type `tailscale ip -4` Enter. You see something like `100.87.45.12` (yours differs — do not copy the example). Optional easier name: Admin → DNS → turn MagicDNS ON → use a name like `hostname.tailabcd.ts.net` instead of numbers.
+5. Share **one** link in the family chat: `http://YOUR-number:5000` (for example `http://100.99.1.5:5000`, keep `:5000`). Only share in family chat, not publicly.
 6. Play:
-   1. Players tap link → FamQuiz → Sign up / Log in.
-   2. Host homepage → pick No. of questions, Difficulty, Waiting time 10–300s → **Start game**.
-   3. Everyone sees a blue banner “A family game is waiting — tap Join!” with a countdown like `Game starting in 04:32` → the game opens by itself at live.
-   4. Answer fast = more points. Top wins. Do Not Disturb / reminders off = banner only, tap Join yourself.
-7. Done: close tab. To fully leave: Tailscale → Disconnect / Exit, host press `Ctrl+C` in terminal.
-   Safety: do not post the `100.x` link publicly. `tailscale logout` to leave tailnet.
+   1. Players tap the link → FamQuiz → Sign up / Log in.
+   2. Host on the homepage → pick No. of questions, Difficulty, Waiting time 10–300 seconds → **Start game**.
+   3. Everyone sees a blue banner “A family game is waiting — tap Join!” with a countdown like `Game starting in 04:32` → the game opens by itself when live. Answer fast = more points. Top total wins.
+   4. Phone tip: turn Do Not Disturb off, or if reminders are off you will only see the in-app banner — tap Join yourself, it won’t auto-jump.
+7. Done: players close the tab. Host: press `Ctrl+C` in the instruction window to stop the game. In the Tailscale app: Disconnect. To fully leave the family network later use `tailscale logout` — otherwise just Disconnect.
 
-## 6. Mailjet – password-reset mails (detailed, beginner)
+## 6. Turn on password-reset emails with Mailjet (optional, ~10 minutes — skip if you want)
 
-**What:** Forgot/change password needs to send mail. Free tier covers a family. One verified sender can mail all. No domain to buy.
+**You can skip this.** Login and quiz still work — only Forgot Password won’t send mail. If you skip, you will just see a yellow warning in the instruction window when someone clicks Forgot Password, and the app still runs.
+
+**What:** “Forgot password” needs to send mail. A free Mailjet account with no card is enough for a family. You only verify one email address (for example your Gmail) — no website to buy.
 
 **Steps – exact clicks:**
 
 1. Go to `https://www.mailjet.com` → Sign up (free).
-2. Top menu → **Sender addresses** → **Add** → type YOUR email → **Add** → open inbox → click Verify → green check.
-3. **API Key Management** → **API Key** (= `MAIL_USERNAME`) → eye icon → Copy. **Secret Key** (= `MAIL_PASSWORD`) → Copy. You should see both keys listed with your verified sender address.
-4. Open `.env`. Fill:
+2. Add a sender: find **Sender addresses** → **Add** → type the Gmail you actually read → **Add** → open that Gmail inbox → click Mailjet’s Verify link until Mailjet shows green Active. Use that same Gmail in Step 4 below, or Mailjet will reject the mail.
+3. Find the two passwords: open Account → **API Key Management**. Copy the long **API Key** (this goes into `MAIL_USERNAME` in `.env`) and the **Secret Key** (this goes into `MAIL_PASSWORD`). They are two different passwords — don’t swap them. Note: keys and sender addresses are on different pages — you won’t see them together.
+4. In your `FamQuiz` folder open `.env` in Notepad (plain text). Copy these lines exactly, do not edit the server/port lines. Replace only the placeholders:
 
 ```env
 MAIL_SERVER=in-v3.mailjet.com
@@ -194,79 +206,77 @@ MAIL_DEFAULT_SENDER=FamQuiz <you@your-verified-email.com>
 SECURITY_EMAIL_SENDER=FamQuiz <you@your-verified-email.com>
 ```
 
-   Old names `SMTP-SERVER/SMTP-PORT/MAIL_SENDER` still work. Any SMTP (e.g. SendGrid single-sender) uses same pattern. Save, restart app.
-5. Check: Log out → Forgot password → type email → you get mail in ~1 min. Check spam first.
+For the last two lines keep the format `FamQuiz <...>` with brackets — just replace `you@your-verified-email.com` with the green-check Gmail from Step 2. Save, then restart the app (`Ctrl+C`, then `python app.py` again).
 
-**If skipped:** mails are suppressed + warning in terminal, app still runs.
+5. Test: in FamQuiz click Log out → Forgot password → type your green-check email → check that inbox + Spam in 1–2 minutes.
 
-**Cheap check (sends 1 real mail to sender):**
+**If skipped:** mails are not sent and you see a warning in the window, app still runs.
 
-```bash
-pytest tests/test_live_mail.py -q
-```
-
-You should see `passed` or `skipped` if keys missing.
+> For helpers only — optional check (sends 1 real mail to your sender address): with `(.venv)` active run `pytest tests/test_live_mail.py -q`. `passed` = works, `skipped` = keys missing so it did nothing, `failed` = copy-paste error.
 
 ## 7. Run + play every day
 
-1. Terminal in `FamQuiz`, activate (Section 3), type `python app.py` Enter (or `python3 app.py`).
-   You should see `Running on http://...:5000`, no red error. Keep window open.
-2. Open `http://127.0.0.1:5000` on host. You should see a Welcome card with Email and Password boxes and a blue Log in button. Sign up → choose Game options → **Start game** → wait countdown → answer.
-3. Others open LAN or Tailscale link from Sections 5A/5B. The in-app Guide page always shows your actual port number (from `.env` `PORT` or `flask run --port`), so follow it if yours isn't `5000`.
-4. Settings: profile, theme (applies instantly), language English / Mandarin Chinese / Spanish / Hindi. Or `/?lang=es`, `/?lang=hi`, `/?lang=zh_Hans` preview.
-5. Leaderboard shows best. Stats show games/wins/power-ups.
-6. Erase = clear my scores (keep account). Delete = remove me + cancel my lobbies.
+1. On the main computer: open the instruction window inside `FamQuiz` (Section 2). If you closed it, repeat the activate line from Section 3 so you see `(.venv)` again. Then type `python app.py` Enter (on Mac `python3 app.py`). You should see `Running on http://...:5000`, no red error. Keep this window open while you play — closing it stops the game for everyone.
+2. On that same computer, open Chrome/Edge and in the address bar go to: `http://127.0.0.1:5000`. You should see a Welcome card with Email and Password boxes and a blue Log in button. First time: Sign up with email + password → choose Game options → **Start game** → wait for the countdown → answer.
+3. Invite family: send them the link you used in Section 5A/5B (same Wi-Fi number or Tailscale number, always with `:5000`). If your port is not `5000`, use the link shown on the in-app Guide page (`/guide` — for example `http://YOUR-number:5001/guide`): that page always shows the correct number from your `.env` `PORT` setting, so follow it.
+4. Settings: click your profile → Settings. Theme applies instantly. Language (English / Mandarin Chinese / Spanish / Hindi) only changes your own screen.
+5. Leaderboard page shows best-ever scores. Stats page shows your games played, wins, and bonus helpers used.
+6. On the profile page: Erase = clear my scores but keep my account (stays logged in). Delete = permanently remove my account + cancel games I started. Both cannot be undone — Erase keeps the account, Delete removes it.
 
 ## 8. Languages
 
-Full UI + quiz + mails in 4 languages. No extra install. `translations.json` holds `es/hi/zh_Hans`. Quiz uses your language + `Use Simplified Chinese.` for Mandarin. Add a string: add English to all three dicts + `{{ _('...') }}` in template, run `pytest tests/test_i18n.py -q`.
+The game, questions, and emails work in English, Mandarin Chinese, Spanish, and Hindi. No extra download needed. Change it in Profile → Settings → Language — it only changes your screen.
 
-## 9. Tests + size
+> For builders: strings live in `translations.json` (`es`/`hi`/`zh_Hans`). To add text, add English to all three dicts and use `{{ _('...') }}` in the template, then run `pytest tests/test_i18n.py -q`.
 
-* Quick check (no cost): `pytest tests/ -q --ignore=tests/test_ollama_live.py --ignore=tests/test_live_mail.py` → `120 passed`.
-* Live (spends credits/mail): two commands in Sections 4/6.
-* Size: source ~9.6 MB (<2 GB / <1 GB installer). RAM ~100 MB – 64 MB ideal not met on Flask, noted for school report.
+## 9. Tests + size [Optional — skip this to just play]
+
+No need to run this to play.
+
+* Quick check (free, no mail/credits): `pytest tests/ -q --ignore=tests/test_ollama_live.py --ignore=tests/test_live_mail.py` → you should see `120 passed`.
+* Live checks (use credits / send a real mail): the two commands in Sections 4 and 6.
+* Size: the code is about 10 MB. It uses about 100 MB memory while running — fine on any recent laptop.
 
 ## If something goes wrong
 
-Read `I see X → do Y`. Order matters.
+Find your message below. Try only that fix first.
 
-1. **I see “not configured (missing OLLAMA_API_KEY)”** → Section 4 paste key → restart `python app.py`.
-2. **Quiz fails 502 / unreadable** → Retry Start. Cloud flaky, app drops bad questions automatically.
-3. **“Cooling down / Slow down” 429** → Wait 10s (quiz) / 5s (lobby). Cost guard, not broken.
-4. **“Timer not started / Stale 409”** → Reload question, answer once, don’t double-click.
-5. **“No live game / No active quiz” 404** → Start from homepage via same link (not localhost vs Tailscale mixed).
-6. **Link won’t open (Tailscale)** → Tailscale OFF? Different accounts? Host `app.py` closed? Missing `:5000`? Try `tailscale status`, `ping 100.x`, `curl http://100.x:5000/guide`.
-7. **No mail** → spam? Sender unverified? Wrong port/TLS? Check Section 6. Secret changed = old reset links stop – request new.
-8. **Port in use** → `PORT=5001 python app.py` → open `:5001`.
-9. **Secrets warning `supersecret...`** → make long random in `.env`: `SECRET_KEY=` + `SECURITY_PASSWORD_SALT=` (use password manager). Restart, logins reset – expected.
-10. **CSRF / logout loop** → use same URL everywhere, allow cookies, don’t iframe the app.
+1. **You see: “Quiz questions aren’t turned on yet” (missing key)** → Ask the family admin to add the Ollama quiz key (see Section 4), save `.env`, then stop and restart with `Ctrl+C` + `python app.py`.
+2. **Quiz says “Something went wrong” (error 502)** → Press Start once again. The question service is sometimes flaky and the app drops bad questions automatically. If it happens twice in a row, wait 1 minute.
+3. **You see “Slow down / Cooling down” (error 429)** → Wait 15 seconds and try once. This is normal — it protects your free credits. Don’t double-click. Quiz allows 1 try per 10 seconds, lobby 1 per 5 seconds.
+4. **“Timer not started” (error 409)** → Reload the question page, answer only once, don’t double-click. Answering before the question loads gives no points.
+5. **“No live game / No active quiz” (error 404)** → Start from the homepage using the same link as everyone (don’t mix `localhost` on one device and the Tailscale number on another).
+6. **Link won’t open (Tailscale)** → Checklist: 1) Is the main computer on with the app window open showing `Running on...`? 2) Is Tailscale ON and Connected for *both* people and logged into the *same* family account? 3) Did you copy the full link including `:5000` with `http://` (not `https://`)? For helpers: try `tailscale status`, `ping 100.x` (your number), `curl http://YOUR-number:5000/guide`.
+7. **No mail arrives** → Check Spam first, search for your sender address. Was the sender verified green Active (Section 6 Step 2)? Are server/port exactly as shown? If the mail secret changed, old reset links stop working — request a new Forgot Password mail.
+8. **“Port in use / address already in use”** → Close other copies of the app. If still stuck, ask a helper to run on another door number: Mac/Linux `PORT=5001 python app.py`, Windows `set PORT=5001` then `python app.py` → open `:5001` instead of `:5000`.
+9. **Warning about `SECRET_KEY` / `supersecret`** → In `.env` make `SECRET_KEY=` and `SECURITY_PASSWORD_SALT=` long random strings (use a password manager to generate, 32+ characters). Save, restart. All logins reset — that is expected.
+10. **Logged out in a loop / login won’t stick** → Use the same web address on all devices, allow cookies in the browser, don’t open the app inside another site’s frame.
 
-Still stuck? Copy the terminal red lines (hide keys/IPs) and ask for help.
+Still stuck? Take a photo of the red text in the instruction window. Cover any long passwords or numbers starting with `100.` and send to your family admin.
 
 ## Project structure (for curious)
 
-* `app.py` – settings, users/scores DB (`site.db` local), languages, quiz + mail helpers, safe `create_app()` (`debug=False`, `0.0.0.0`, security headers, CSRF).
-* `routes.py` – pages + `/api/quiz/*`, `/api/game/*`, lobby + countdown + auto-open.
-* `templates/` + `static/` – light-blue theme, `game_notify.js` banner/poll.
-* `translations.json` – `es/hi/zh_Hans`.
-* `tests/` – 120 fast + live Ollama/Mailjet (skipped without keys).
+* `app.py` – settings, users/scores database (`site.db` on the main computer only), languages, quiz + mail helpers.
+* `routes.py` – pages + quiz/game/lobby/countdown logic.
+* `templates/` + `static/` – light-blue theme and game banner.
+* `translations.json` – Spanish, Hindi, Simplified Chinese texts.
+* `tests/` – 120 fast checks + live Ollama/Mailjet checks (skipped without keys).
 
-Local only: `site.db` + `.env` stay on host. Restrict file sharing, use OS password + BitLocker/FileVault.
+Local only: `site.db` + `.env` stay on the main computer. Don’t share them. Use your computer password and disk encryption (BitLocker on Windows / FileVault on Mac).
 
 ---
 
 ## 10. Advanced (for curious family + builders)
 
-Simple words, deeper detail. Skip if basics work.
+Simple words first, deeper detail after. Skip if basics work.
 
 ### 10.1 All settings in one place
 
-Open `.env` in Notepad/TextEdit. Each line is `NAME=value`. Restart `python app.py` after saving.
+Open `.env` in Notepad/TextEdit (plain text). Each line is `NAME=value` with no spaces around `=`. Save, then restart (`Ctrl+C`, then `python app.py`) so it reads the file.
 
 ```env
-SECRET_KEY=long-random-note-keeps-logins-safe
-SECURITY_PASSWORD_SALT=another-long-random-note
+SECRET_KEY=long-random-note-keeps-logins-safe-make-32-chars-or-more
+SECURITY_PASSWORD_SALT=another-long-random-note-different-from-above
 PORT=5000
 MAIL_SERVER=in-v3.mailjet.com
 MAIL_PORT=587
@@ -281,46 +291,56 @@ OLLAMA_MODEL=gpt-oss:20b
 OLLAMA_HOST=https://ollama.com
 ```
 
-Old names `SMTP-SERVER`, `SMTP-PORT`, `MAIL_SENDER`, `MAIL-API-KEY` still work. Missing mail = suppressed + warning. Missing Ollama = quiz 503. Missing secrets = warning + logins reset on restart – make them long random with a password manager.
+If email settings are empty, FamQuiz still runs but sends no mail — you will see a warning. If the Ollama key is missing, Start Quiz shows “Quiz service unavailable”. If secrets are short/missing you get a warning and logins reset on restart — make them long random with a password manager.
+
+> Builder note: old names `SMTP-SERVER`, `SMTP-PORT`, `MAIL_SENDER`, `MAIL-API-KEY` still work. `PORT` is used by `python app.py`; plain `flask run` needs `FLASK_RUN_HOST=0.0.0.0` / `FLASK_RUN_PORT=5000` too (already in `.env.example`).
 
 ### 10.2 How scoring really works
 
-Each correct answer gives:
+Correct = 1000 points + up to 500 speed bonus. Answer instantly ≈ 1500, at the last second ≈ 1000, wrong = 0. Win = your total beats everyone else’s best. Tie keeps the earlier champ on top. Your last score shows in the top bar, best ever on the leaderboard.
 
-```text
-1000 + round(500 * (1 - elapsed_ms / limit_ms))
-```
+Power-ups appear randomly about 1 in 3 questions when enabled: Double ×2, 50:50 removes 2 wrong answers, Extra Time 30s → 45s, Hint shows the first letter.
 
-Fast = up to 1500, slow = 1000, wrong = 0. Timer starts when the question appears (`quiz_state`). Answering without loading = 409, no free points. Power-ups: Double ×2, 50:50 removes 2 wrong, Extra Time 30s → 45s, Hint shows first letter. They appear randomly about 1 in 3 questions when enabled. Win = your total beats everyone else’s best. Tie keeps the earlier champ on top. Your last score shows in the top bar, best ever on leaderboard.
-
-Note: answers travel in the login cookie readable as text (base64) but tamper-proof with a strong `SECRET_KEY`. Don’t share your cookie; use a strong secret.
+> Builder note: formula is `1000 + round(500 * (1 - elapsed_ms / limit_ms))`. Timer starts when the question appears. Answering without loading returns 409, no free points. Answers are stored in the signed login cookie (readable as text but tamper-proof if `SECRET_KEY` is strong) — don’t share your cookie, use a strong secret.
 
 ### 10.3 Lobby and auto-open
 
-One shared lobby (`GameSession`): lobby 10–300s → live → ends after `num*30s + 120s`. App expires old lobbies automatically so ghosts don’t stick. Banner uses Server-Sent Events primary + 4-second poll fallback, `?once=1` for tests. Countdown is recomputed from `starts_at` every second. Do Not Disturb / reminders off = banner only, tap Join yourself. Dismiss is per game, so dismissing the lobby also dismisses its live phase. `Join` returns config so each player generates questions in their own language.
+There is one shared lobby. It waits 10 seconds to 5 minutes (you pick), then goes live and ends automatically after the game time. Old games auto-close so ghosts don’t stick. Everyone sees the same countdown, recomputed every second.
 
-### 10.4 Security for the LAN host
+If Do Not Disturb is on or reminders are off, you only see the banner — tap Join yourself, it won’t auto-jump. Dismiss is per game, so dismissing the lobby also dismisses its live phase. Join sends your language so each player gets questions in their own language.
 
-Host runs `debug=False` on `0.0.0.0` – LAN + Tailscale can reach it, debugger RCE is off. Headers sent: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`. Cookies are `HttpOnly + SameSite=Lax`. JSON posts send `X-CSRFToken` (tests bypass with `WTF_CSRF_ENABLED=False`). Limits: 1 quiz per 10s per user, 1 lobby per 5s (tests exempt) – protects Ollama credits. No brute-force lockout, so use strong family passwords. After everyone joined, you may set `SECURITY_REGISTERABLE=False` to stop LAN strangers registering. Keep `site.db` + `.env` private.
+> Builder note: `GameSession` model, Server-Sent Events primary + 4-second poll fallback, `?once=1` for tests, countdown from `starts_at`.
+
+### 10.4 Safety checklist for the family
+
+1. Use strong family passwords (no brute-force lockout, so passwords matter).
+2. After everyone joined, turn off “Allow new accounts” so neighbours on the same Wi-Fi can’t register.
+3. Don’t share `site.db` / `.env` files. Keep the main computer locked.
+
+> Builder note: host runs with `debug=False` on `0.0.0.0` (reachable on LAN/Tailscale, debugger off). Headers `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`. Cookies `HttpOnly + SameSite=Lax`. JSON posts send `X-CSRFToken` (tests use `WTF_CSRF_ENABLED=False`). Limits: 1 quiz/10s, 1 lobby/5s (tests exempt). `SECURITY_REGISTERABLE=False` stops new registrations.
 
 ### 10.5 Languages for builders
 
-`translations.json` holds `es/hi/zh_Hans`. Order: per-mail override → `?lang=` → session → user setting → browser → `en`. Mails use per-recipient templates + translated subjects. JS uses `window.I18N` + `GET /api/i18n/<locale>.json`. Always use `{{ _('...')|tojson }}` in JS. Add a string: add English to all three dicts, use `{{ _('...') }}`, run `pytest tests/test_i18n.py -q`.
+Skip unless building. Order: per-mail choice → `?lang=` in address → saved session → your profile setting → browser → English. Mails use per-person templates. Browser code uses `window.I18N` + `/api/i18n/<locale>.json`. Add text with `{{ _('...') }}` and test with `pytest tests/test_i18n.py -q`.
 
 ### 10.6 Models, mail, network tweaks
 
-Ollama: `temperature 0.7`, strict JSON schema, single-line fence fix, `answer` text / `1.0` / `B` tolerated, duplicates dropped, truncated to asked `n`. Free models listed in Section 4. Mail: any SMTP works with `MAIL_*`. Network: prefer MagicDNS name over raw `100.x`, set static LAN IP on router for stable link, firewall allow Private only, `PORT=5001 python app.py` fixes clash.
+Ollama uses the free default model. Any mail company works with the same `MAIL_*` lines (for example SendGrid single-sender). Network tips: prefer the Tailscale name over the raw `100.x` number if it changes, set a static home IP on your router for a stable link, firewall Allow Private only, `PORT=5001` fixes a clash (see troubleshooting #8).
+
+> Builder note: `temperature 0.7`, strict JSON, single-line fix, tolerates `answer` text / `1.0` / `B`, drops duplicates, truncates to asked `n`.
 
 ### 10.7 Tests, size, peek at data
+
+Family can skip this.
 
 ```bash
 pytest tests/ -q --ignore=tests/test_ollama_live.py --ignore=tests/test_live_mail.py
 ```
 
-You should see `120 passed`. Live commands are in Sections 4/6 and spend credits/mail. Source ~9.6 MB. Peek (host only):
+You should see `120 passed`. Live commands in Sections 4/6 spend credits/mail. Code is ~10 MB. Peek (main computer only):
 
 ```bash
 sqlite3 instance/site.db "select email,best_score,total_wins from user;"
 ```
 
-`instance/` and `.env` are git-ignored and never served.
+`instance/` and `.env` are ignored by git and never served to players.
