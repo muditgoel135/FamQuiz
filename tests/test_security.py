@@ -37,12 +37,18 @@ def _csrf_client(tmp_path):
     client = csrf_app.test_client()
     html = client.get("/login").data.decode()
     token = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', html).group(1)
-    assert client.post(
-        "/login",
-        data={"email": "csrf@example.com", "password": "pw12345678",
-              "csrf_token": token},
-        follow_redirects=False,
-    ).status_code == 302
+    assert (
+        client.post(
+            "/login",
+            data={
+                "email": "csrf@example.com",
+                "password": "pw12345678",
+                "csrf_token": token,
+            },
+            follow_redirects=False,
+        ).status_code
+        == 302
+    )
     api_token = re.search(
         r'name="csrf-token" content="([^"]+)"', client.get("/").data.decode()
     ).group(1)
@@ -68,18 +74,29 @@ class TestCsrfDelete:
         # Flask-WTF matches header names case-insensitively (and both
         # X-CSRFToken / X-CSRF-Token spellings), so aliases pass.
         client, token = _csrf_client(tmp_path)
-        assert client.post(
-            "/api/settings/save", json={}, headers={header: token}
-        ).status_code == 200
+        assert (
+            client.post(
+                "/api/settings/save", json={}, headers={header: token}
+            ).status_code
+            == 200
+        )
 
     def test_garbage_token_rejected(self, tmp_path):
         client, token = _csrf_client(tmp_path)
-        assert client.post(
-            "/api/settings/save", json={}, headers={"X-CSRFToken": token[:-2] + "xx"}
-        ).status_code == 400
-        assert client.post(
-            "/api/settings/save", json={}, headers={"Csrf-Token": token}
-        ).status_code == 400
+        assert (
+            client.post(
+                "/api/settings/save",
+                json={},
+                headers={"X-CSRFToken": token[:-2] + "xx"},
+            ).status_code
+            == 400
+        )
+        assert (
+            client.post(
+                "/api/settings/save", json={}, headers={"Csrf-Token": token}
+            ).status_code
+            == 400
+        )
 
     def test_cross_session_rejected(self, tmp_path):
         import tempfile
@@ -104,9 +121,12 @@ class TestCsrfDelete:
             )
             db.session.commit()
         c2 = app2.test_client()
-        assert c1.post(
-            "/api/settings/save", json={}, headers={"X-CSRFToken": "bogus"}
-        ).status_code == 400
+        assert (
+            c1.post(
+                "/api/settings/save", json={}, headers={"X-CSRFToken": "bogus"}
+            ).status_code
+            == 400
+        )
         # CSRF fires before auth: even an anonymous post without token is 400.
         assert c2.post("/api/settings/save", json={}).status_code == 400
 
@@ -154,8 +174,10 @@ class TestSessionHandling:
         before = client.get_cookie("session")
         client.post(
             "/login",
-            data={"email": existing_user["email"],
-                  "password": existing_user["password"]},
+            data={
+                "email": existing_user["email"],
+                "password": existing_user["password"],
+            },
         )
         after = client.get_cookie("session")
         assert before is not None and after is not None
@@ -174,8 +196,10 @@ class TestSessionHandling:
             sess["quiz"] = {"questions": [], "index": 0}
         client.post(
             "/login",
-            data={"email": existing_user["email"],
-                  "password": existing_user["password"]},
+            data={
+                "email": existing_user["email"],
+                "password": existing_user["password"],
+            },
         )
         assert client.get("/api/quiz/state").status_code == 404
 
@@ -210,9 +234,11 @@ class TestHashStrength:
 
         with app.app_context():
             user_datastore.create_user(
-                email="s1@example.com", password=hash_password("same-pass-123"))
+                email="s1@example.com", password=hash_password("same-pass-123")
+            )
             user_datastore.create_user(
-                email="s2@example.com", password=hash_password("same-pass-123"))
+                email="s2@example.com", password=hash_password("same-pass-123")
+            )
             db.session.commit()
             u1 = User.query.filter_by(email="s1@example.com").one()
             u2 = User.query.filter_by(email="s2@example.com").one()
@@ -228,9 +254,11 @@ class TestHashStrength:
             before = User.query.filter_by(email=existing_user["email"]).one().password
         client.post(
             "/change",
-            data={"password": existing_user["password"],
-                  "new_password": "changed-789",
-                  "new_password_confirm": "changed-789"},
+            data={
+                "password": existing_user["password"],
+                "new_password": "changed-789",
+                "new_password_confirm": "changed-789",
+            },
         )
         with app.app_context():
             after = User.query.filter_by(email=existing_user["email"]).one().password
@@ -281,8 +309,11 @@ class TestAntiEnumeration:
 
         resp = client.post(
             "/register",
-            data={"email": existing_user["email"], "password": "another-pass-1",
-                  "password_confirm": "another-pass-1"},
+            data={
+                "email": existing_user["email"],
+                "password": "another-pass-1",
+                "password_confirm": "another-pass-1",
+            },
         )
         assert resp.status_code == 200
         with app.app_context():
@@ -292,12 +323,17 @@ class TestAntiEnumeration:
 class TestStoredXss:
     def test_escaped(self, client, app, existing_user):
         _login(client, existing_user)
-        assert client.post(
-            "/api/settings/save",
-            json={"display_name": "<script>alert(1)</script>",
-                  "nickname": '<img src=x onerror=alert(2)>',
-                  "favorite_subject": "<svg onload=alert(3)>"},
-        ).status_code == 200
+        assert (
+            client.post(
+                "/api/settings/save",
+                json={
+                    "display_name": "<script>alert(1)</script>",
+                    "nickname": "<img src=x onerror=alert(2)>",
+                    "favorite_subject": "<svg onload=alert(3)>",
+                },
+            ).status_code
+            == 200
+        )
         for path in ("/", "/leaderboard", "/settings", "/gameplay"):
             html = client.get(path).data.decode()
             assert "<script>alert" not in html, path
@@ -307,8 +343,8 @@ class TestStoredXss:
             from app import User
 
             assert User.query.filter_by(
-                email=existing_user["email"]).one().display_name == (
-                "<script>alert(1)</script>")
+                email=existing_user["email"]
+            ).one().display_name == ("<script>alert(1)</script>")
 
     def test_quote_breakout(self, client, existing_user):
         _login(client, existing_user)
@@ -325,14 +361,22 @@ class TestStoredXss:
 class TestOpenRedirect:
     @pytest.mark.parametrize(
         "evil",
-        ["http://evil.com", "https://evil.com/phish", "//evil.com",
-         "javascript:alert(1)", "data:text/html,hi", "%2F%2Fevil.com"],
+        [
+            "http://evil.com",
+            "https://evil.com/phish",
+            "//evil.com",
+            "javascript:alert(1)",
+            "data:text/html,hi",
+            "%2F%2Fevil.com",
+        ],
     )
     def test_login_next_never_offsite(self, client, existing_user, evil):
         resp = client.post(
             f"/login?next={evil}",
-            data={"email": existing_user["email"],
-                  "password": existing_user["password"]},
+            data={
+                "email": existing_user["email"],
+                "password": existing_user["password"],
+            },
             follow_redirects=False,
         )
         loc = resp.headers.get("Location", "")

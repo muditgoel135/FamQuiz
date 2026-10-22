@@ -1,4 +1,5 @@
-"""Tests for homepage, leaderboard, guide, serving-port and app wiring.
+"""
+Tests for homepage, leaderboard, guide, serving-port and app wiring.
 
 Covers routes.homepage / leaderboard / guide / _serving_port /
 inject_theme / inject_i18n / _persist_lang_param / register_routes plus
@@ -134,7 +135,11 @@ class TestHomepageAuthed:
         from app import User, db
 
         _login(client, existing_user)
-        for raw, expected in [(999, 'value="20"'), (0, 'value="10"'), (-5, 'value="1"')]:
+        for raw, expected in [
+            (999, 'value="20"'),
+            (0, 'value="10"'),
+            (-5, 'value="1"'),
+        ]:
             with app.app_context():
                 user = User.query.filter_by(email=existing_user["email"]).one()
                 user.default_num_questions = raw
@@ -210,12 +215,13 @@ class TestHomepageLeaderboard:
         assert "(You)" not in html
 
     def test_dot_matrix(self, client, app):
-        _make_user(app, "r@example.com", best=300, status="Ready to play",
-                   display_name="Rr")
-        _make_user(app, "d@example.com", best=200, status="Do not disturb",
-                   display_name="Dd")
-        _make_user(app, "o@example.com", best=100, status="offline",
-                   display_name="Oo")
+        _make_user(
+            app, "r@example.com", best=300, status="Ready to play", display_name="Rr"
+        )
+        _make_user(
+            app, "d@example.com", best=200, status="Do not disturb", display_name="Dd"
+        )
+        _make_user(app, "o@example.com", best=100, status="offline", display_name="Oo")
         html = client.get("/").data.decode()
         assert "home-dot-ready" in html
         assert "home-dot-busy" in html
@@ -287,10 +293,12 @@ class TestLeaderboardPage:
         assert "board-list" not in html
 
     def test_dot_status(self, client, app):
-        _make_user(app, "r@example.com", best=300, status="Ready to play",
-                   display_name="Rr")
-        _make_user(app, "d@example.com", best=200, status="Do not disturb",
-                   display_name="Dd")
+        _make_user(
+            app, "r@example.com", best=300, status="Ready to play", display_name="Rr"
+        )
+        _make_user(
+            app, "d@example.com", best=200, status="Do not disturb", display_name="Dd"
+        )
         html = client.get("/leaderboard").data.decode()
         assert "home-dot-ready" in html
         assert "home-dot-busy" in html
@@ -321,9 +329,7 @@ class TestGuidePage:
 
     def test_port_host(self, client, monkeypatch):
         monkeypatch.setenv("PORT", "5000")
-        html = client.get(
-            "/guide", headers={"Host": "example.com:4321"}
-        ).data.decode()
+        html = client.get("/guide", headers={"Host": "example.com:4321"}).data.decode()
         assert "<code>:4321</code>" in html
         assert "<code>:5000</code>" not in html
 
@@ -531,7 +537,9 @@ class TestRegisterRoutes:
         assert "inject_theme" in names
         assert "inject_i18n" in names
         before = app.before_request_funcs.get(None, [])
-        assert any(getattr(fn, "__name__", "") == "_persist_lang_param" for fn in before)
+        assert any(
+            getattr(fn, "__name__", "") == "_persist_lang_param" for fn in before
+        )
 
     def test_method_not_allowed(self, client, existing_user):
         _login(client, existing_user)

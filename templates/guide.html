@@ -23,7 +23,7 @@
                     {{ _('One computer runs the game (the host). Everyone else just taps the family link and plays.') }}
                 </li>
                 <li>
-                    {{ _('Running the host? Follow the README setup (Python, keys, start). Just playing? Keep reading below.') }}
+                    {{ _('Running the main computer? The card below is for you. Just playing? Keep reading.') }}
                 </li>
                 <li>{{ _('Sign up or log in.') }}</li>
             </ol>
@@ -39,6 +39,29 @@
                 </li>
                 <li>{{ _('Wait for the countdown — the game opens automatically.') }}</li>
                 <li>{{ _('A family game is waiting — tap Join!') }}</li>
+            </ol>
+        </section>
+        <section class="home-card" aria-label="{{ _('If you run the main computer') }}">
+            <h2 class="home-heading">{{ _('If you run the main computer') }}</h2>
+            <ol class="mb-0">
+                <li>
+                    {{ _('Start the game by opening the program the usual way, on a computer that stays plugged in and awake while family plays.') }}
+                </li>
+                <li>
+                    {{ _('The window that opens is the game: closing it (or pressing Ctrl+C) stops play for everyone, so keep it open until the last player finishes.') }}
+                </li>
+                <li>
+                    {{ _('Only one copy should run: “Port in use” means the game is already open in another window — close one and keep going.') }}
+                </li>
+                <li>
+                    {{ _('The very first time, Windows or Mac may show one security question — choose Run anyway (Windows: More info first) or right-click → Open (Mac).') }}
+                </li>
+                <li>
+                    {{ _('Restarting is safe: scores, accounts and settings are all saved on this computer, so nothing is lost between games.') }}
+                </li>
+                <li>
+                    {{ _('Far-away players need Tailscale switched on for everyone, host included, for the whole session.') }}
+                </li>
             </ol>
         </section>
         <section class="home-card" aria-label="{{ _('Play and score') }}">

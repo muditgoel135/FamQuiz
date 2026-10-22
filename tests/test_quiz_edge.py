@@ -93,12 +93,18 @@ class TestGenerateMatrix:
         fake = _FakeClient(_quiz_json(7))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        assert client.post("/api/quiz/generate", json={"num_questions": 0}).get_json()[
-            "total"
-        ] == 7
-        assert client.post("/api/quiz/generate", json={"num_questions": ""}).get_json()[
-            "total"
-        ] == 7
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 0}).get_json()[
+                "total"
+            ]
+            == 7
+        )
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": ""}).get_json()[
+                "total"
+            ]
+            == 7
+        )
 
     def test_missing_uses_default(self, client, app, existing_user, monkeypatch):
         from app import User, db
@@ -118,9 +124,12 @@ class TestGenerateMatrix:
         fake = _FakeClient(_quiz_json(5))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        assert client.post("/api/quiz/generate", json={"num_questions": "5"}).get_json()[
-            "total"
-        ] == 5
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": "5"}).get_json()[
+                "total"
+            ]
+            == 5
+        )
 
     def test_invalid_string_fallback(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
@@ -136,9 +145,12 @@ class TestGenerateMatrix:
         fake = _FakeClient(_quiz_json(2))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        assert client.post("/api/quiz/generate", json={"num_questions": -5}).get_json()[
-            "total"
-        ] == 1
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": -5}).get_json()[
+                "total"
+            ]
+            == 1
+        )
 
     def test_float_truncated(self, client, existing_user, monkeypatch):
         # quiz_generate uses int() without float rejection (unlike game_start).
@@ -146,9 +158,12 @@ class TestGenerateMatrix:
         fake = _FakeClient(_quiz_json(5))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        assert client.post("/api/quiz/generate", json={"num_questions": 3.9}).get_json()[
-            "total"
-        ] == 3
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 3.9}).get_json()[
+                "total"
+            ]
+            == 3
+        )
 
     def test_difficulty_matrix(self, client, app, existing_user, monkeypatch):
         from app import User, db
@@ -199,8 +214,9 @@ class TestGenerateMatrix:
         fake = _FakeClient(_quiz_json(10))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        resp = client.post("/api/quiz/generate", data="not-json",
-                           content_type="text/plain")
+        resp = client.post(
+            "/api/quiz/generate", data="not-json", content_type="text/plain"
+        )
         assert resp.status_code == 200
         assert resp.get_json()["total"] == 10
 
@@ -378,9 +394,12 @@ class TestAnswerEdge:
             "/api/quiz/answer", json={"option_index": 1, "question_index": 1}
         ).get_json()
         assert second["finished"] is True
-        assert client.post(
-            "/api/quiz/answer", json={"option_index": 1, "question_index": 1}
-        ).status_code == 409
+        assert (
+            client.post(
+                "/api/quiz/answer", json={"option_index": 1, "question_index": 1}
+            ).status_code
+            == 409
+        )
 
     def test_exact_math(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
@@ -398,7 +417,9 @@ class TestAnswerEdge:
         _start(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
         _force(client, "double")
-        assert client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 200
+        assert (
+            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 200
+        )
         _ago(client, 0)
         body = client.post(
             "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
@@ -430,10 +451,10 @@ class TestAnswerEdge:
             assert sess["quiz"]["offered"] is None
             assert sess["quiz"]["started_at"] is None
 
-    @pytest.mark.parametrize("field,value", [("started_at", "bad"),
-                                             ("limit_ms", "bad")])
-    def test_tampered_timer_409(self, client, existing_user, monkeypatch,
-                                field, value):
+    @pytest.mark.parametrize(
+        "field,value", [("started_at", "bad"), ("limit_ms", "bad")]
+    )
+    def test_tampered_timer_409(self, client, existing_user, monkeypatch, field, value):
         # Fixed: session-tampered timers previously raised unhandled
         # TypeError/500; now a clean 409 corrupted.
         _login(client, existing_user)
@@ -447,8 +468,7 @@ class TestAnswerEdge:
             "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
         )
         assert resp.status_code == 409
-        assert resp.get_json() == {
-            "error": "Quiz state corrupted. Start a new game."}
+        assert resp.get_json() == {"error": "Quiz state corrupted. Start a new game."}
 
 
 class TestPowerupEdge:
@@ -518,8 +538,7 @@ class TestPowerupEdge:
             assert sess["quiz"]["powerup_counts"] == {"double": 1, "hint": 1}
 
     @pytest.mark.parametrize("kind", ["fifty", "hint"])
-    def test_tampered_answer_index_409(self, client, existing_user, monkeypatch,
-                                       kind):
+    def test_tampered_answer_index_409(self, client, existing_user, monkeypatch, kind):
         # Fixed: tampered questions lacking answer_index previously raised
         # unhandled KeyError/500 in the fifty/hint branches.
         _login(client, existing_user)
@@ -531,8 +550,7 @@ class TestPowerupEdge:
             sess.modified = True
         resp = client.post("/api/quiz/powerup", json={"kind": kind})
         assert resp.status_code == 409
-        assert resp.get_json() == {
-            "error": "Quiz state corrupted. Start a new game."}
+        assert resp.get_json() == {"error": "Quiz state corrupted. Start a new game."}
 
     def test_tampered_calc_limit_409(self, client, existing_user, monkeypatch):
         # Fixed: tampered limit_ms="bad" previously raised TypeError/500
@@ -546,8 +564,7 @@ class TestPowerupEdge:
             sess.modified = True
         resp = client.post("/api/quiz/powerup", json={"kind": "calc"})
         assert resp.status_code == 409
-        assert resp.get_json() == {
-            "error": "Quiz state corrupted. Start a new game."}
+        assert resp.get_json() == {"error": "Quiz state corrupted. Start a new game."}
 
 
 class TestFinishEdge:
@@ -639,9 +656,12 @@ class TestFinishEdge:
         second = client.post("/api/quiz/finish").get_json()
         assert first == second
         assert client.get("/api/quiz/state").status_code == 404
-        assert client.post(
-            "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
-        ).status_code == 404
+        assert (
+            client.post(
+                "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
+            ).status_code
+            == 404
+        )
 
     def test_no_quiz_cached(self, client, existing_user):
         _login(client, existing_user)
@@ -693,13 +713,16 @@ class TestFinishEdge:
         self._inject_finished(client, 500, {"mega": 1})
         resp = client.post("/api/quiz/finish")
         assert resp.status_code == 409
-        assert resp.get_json() == {
-            "error": "Quiz state corrupted. Start a new game."}
+        assert resp.get_json() == {"error": "Quiz state corrupted. Start a new game."}
         with app.app_context():
             from app import User
 
-            assert User.query.filter_by(
-                email=existing_user["email"]).one().total_games_played == 0
+            assert (
+                User.query.filter_by(email=existing_user["email"])
+                .one()
+                .total_games_played
+                == 0
+            )
 
     def test_missing_questions_409(self, client, existing_user):
         # Fixed: finished quiz missing the questions key previously raised
@@ -711,8 +734,7 @@ class TestFinishEdge:
             sess.modified = True
         resp = client.post("/api/quiz/finish")
         assert resp.status_code == 409
-        assert resp.get_json() == {
-            "error": "Quiz state corrupted. Start a new game."}
+        assert resp.get_json() == {"error": "Quiz state corrupted. Start a new game."}
 
     def test_counts_not_dict_409(self, client, existing_user):
         # Fixed: powerup_counts tampered to a non-dict previously raised
@@ -724,8 +746,7 @@ class TestFinishEdge:
             sess.modified = True
         resp = client.post("/api/quiz/finish")
         assert resp.status_code == 409
-        assert resp.get_json() == {
-            "error": "Quiz state corrupted. Start a new game."}
+        assert resp.get_json() == {"error": "Quiz state corrupted. Start a new game."}
 
     def test_finish_nondict_404_pops(self, client, existing_user):
         # Fixed: session quiz tampered to a non-dict previously raised

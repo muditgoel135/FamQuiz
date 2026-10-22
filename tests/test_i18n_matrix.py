@@ -29,8 +29,10 @@ class TestPerLocalePages:
 
     def test_settings(self, client, existing_user):
         _login(client, existing_user)
-        assert "Ajustes" in client.get("/settings?lang=es").data.decode() or \
-            "Guardar" in client.get("/settings?lang=es").data.decode()
+        assert (
+            "Ajustes" in client.get("/settings?lang=es").data.decode()
+            or "Guardar" in client.get("/settings?lang=es").data.decode()
+        )
         assert 'lang="hi"' in client.get("/settings?lang=hi").data.decode()
 
     def test_gameplay(self, client, existing_user):
@@ -50,12 +52,18 @@ class TestPerLocalePages:
 
 class TestNegotiation:
     def test_accept_header(self, client):
-        assert 'lang="es"' in client.get(
-            "/", headers={"Accept-Language": "es"}).data.decode()
-        assert 'lang="hi"' in client.get(
-            "/", headers={"Accept-Language": "hi"}).data.decode()
-        assert 'lang="en"' in client.get(
-            "/", headers={"Accept-Language": "fr"}).data.decode()
+        assert (
+            'lang="es"'
+            in client.get("/", headers={"Accept-Language": "es"}).data.decode()
+        )
+        assert (
+            'lang="hi"'
+            in client.get("/", headers={"Accept-Language": "hi"}).data.decode()
+        )
+        assert (
+            'lang="en"'
+            in client.get("/", headers={"Accept-Language": "fr"}).data.decode()
+        )
 
     def test_session_beats_user(self, client, app, existing_user):
         from app import User, db
@@ -108,9 +116,13 @@ class TestMailExtended:
         import json as _json
         import os as _os
 
-        with open(_os.path.join(
-            _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
-            "translations.json"), encoding="utf-8") as fh:
+        with open(
+            _os.path.join(
+                _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+                "translations.json",
+            ),
+            encoding="utf-8",
+        ) as fh:
             strings = _json.load(fh)
         for lang, loc in [("Spanish", "es"), ("English", "en")]:
             self._set(app, existing_user["email"], lang)
@@ -118,7 +130,8 @@ class TestMailExtended:
                 client.post("/reset", data={"email": existing_user["email"]})
             assert len(outbox) == 1
             assert outbox[0].subject == strings[loc].get(
-                "Password reset instructions", "Password reset instructions")
+                "Password reset instructions", "Password reset instructions"
+            )
             assert outbox[0].body
             assert outbox[0].html
 

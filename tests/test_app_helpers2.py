@@ -194,8 +194,9 @@ class TestDisplayResiduals:
         # Whitespace display_name falls through to nickname per docstring.
         assert (
             app_module.display_name_of(
-                SimpleNamespace(display_name="  ", nickname="  Tommy  ",
-                                email="x@y.com")
+                SimpleNamespace(
+                    display_name="  ", nickname="  Tommy  ", email="x@y.com"
+                )
             )
             == "Tommy"
         )
@@ -272,9 +273,9 @@ class TestBuildQuizResiduals:
         assert "Inject:" in prompt
 
     def test_grade_blank_general(self):
-        prompt = app_module.build_quiz_messages(
-            _profile(grade_occupation="   "), 1
-        )[1]["content"]
+        prompt = app_module.build_quiz_messages(_profile(grade_occupation="   "), 1)[1][
+            "content"
+        ]
         assert "general" in prompt
 
 
@@ -300,9 +301,7 @@ class TestGetLocaleResiduals:
         with app.test_request_context("/", headers={"Accept-Language": "es"}):
             from unittest import mock
 
-            with mock.patch.object(
-                app_module, "current_user", _Boom()
-            ):
+            with mock.patch.object(app_module, "current_user", _Boom()):
                 assert app_module.get_locale() == "es"
 
     def test_outer_exception_en(self, app):
@@ -319,7 +318,8 @@ class TestGetLocaleResiduals:
             from unittest import mock
 
             with mock.patch.object(
-                request.args.__class__, "get",
+                request.args.__class__,
+                "get",
                 side_effect=RuntimeError("args down"),
             ):
                 assert app_module.get_locale() == "en"
@@ -350,10 +350,7 @@ class TestMailEmpties:
         monkeypatch.setattr(app_module, "_recipient_locale", lambda *a, **k: "en")
         monkeypatch.setattr("flask.render_template", lambda *a, **k: "ok")
         with app.test_request_context("/"):
-            assert (
-                app_module.security_render_template("t", email="", user=None)
-                == "ok"
-            )
+            assert app_module.security_render_template("t", email="", user=None) == "ok"
             assert g.get("email_locale") is None
 
     def test_mailutil_empty_recipient(self, app, monkeypatch):
@@ -361,7 +358,8 @@ class TestMailEmpties:
 
         captured = {}
         monkeypatch.setattr(
-            app_module, "_recipient_locale",
+            app_module,
+            "_recipient_locale",
             lambda r, u=None: captured.update(r=r) or "en",
         )
         monkeypatch.setattr(app_module, "translate", lambda s, loc: f"{s}-{loc}")
@@ -453,7 +451,8 @@ class TestGenerateResiduals:
 
     def test_factory_passthrough(self, monkeypatch):
         monkeypatch.setattr(
-            app_module, "get_ollama_client",
+            app_module,
+            "get_ollama_client",
             lambda: (_ for _ in ()).throw(app_module.QuizConfigError("no key")),
         )
         with pytest.raises(app_module.QuizConfigError):
@@ -527,9 +526,7 @@ class TestCreateAppResiduals:
         def _boom(self, app):
             raise RuntimeError("boom")
 
-        monkeypatch.setattr(
-            "flask_wtf.csrf.CSRFProtect.init_app", _boom
-        )
+        monkeypatch.setattr("flask_wtf.csrf.CSRFProtect.init_app", _boom)
         with caplog.at_level(logging.WARNING):
             flask_app = app_module.create_app(
                 {
@@ -720,9 +717,15 @@ class TestSequentialRaces:
                 return _NS(
                     message=_NS(
                         content=_json.dumps(
-                            {"questions": [{"question": "Q?",
-                                            "options": ["A", "B", "C", "D"],
-                                            "answer_index": 0}]}
+                            {
+                                "questions": [
+                                    {
+                                        "question": "Q?",
+                                        "options": ["A", "B", "C", "D"],
+                                        "answer_index": 0,
+                                    }
+                                ]
+                            }
                         )
                     )
                 )
@@ -731,10 +734,15 @@ class TestSequentialRaces:
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: _F())
         client.post(
             "/login",
-            data={"email": existing_user["email"],
-                  "password": existing_user["password"]},
+            data={
+                "email": existing_user["email"],
+                "password": existing_user["password"],
+            },
         )
-        assert client.post("/api/quiz/generate", json={"num_questions": 1}).status_code == 200
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 1}).status_code
+            == 200
+        )
         assert client.get("/api/quiz/state").status_code == 200
         import time as _t
 

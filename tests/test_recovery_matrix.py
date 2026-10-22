@@ -38,7 +38,8 @@ class TestForgotMatrix:
     def test_existing_no_redirect(self, client, existing_user):
         with mail.record_messages() as outbox:
             resp = client.post(
-                "/reset", data={"email": existing_user["email"]},
+                "/reset",
+                data={"email": existing_user["email"]},
                 follow_redirects=False,
             )
         assert resp.status_code == 200
@@ -46,8 +47,10 @@ class TestForgotMatrix:
         assert existing_user["email"] in outbox[0].recipients
 
     def test_per_locale(self, client):
-        assert "Restablece" in client.get("/reset?lang=es").data.decode() or \
-            "Enviar" in client.get("/reset?lang=es").data.decode()
+        assert (
+            "Restablece" in client.get("/reset?lang=es").data.decode()
+            or "Enviar" in client.get("/reset?lang=es").data.decode()
+        )
         assert 'lang="hi"' in client.get("/reset?lang=hi").data.decode()
         assert 'lang="zh-Hans"' in client.get("/reset?lang=zh_Hans").data.decode()
 
@@ -71,13 +74,16 @@ class TestResetMatrix:
         )
         assert resp.status_code == 200
         # old password still works
-        assert client.post(
-            "/login",
-            data={
-                "email": existing_user["email"],
-                "password": existing_user["password"],
-            },
-        ).status_code == 302
+        assert (
+            client.post(
+                "/login",
+                data={
+                    "email": existing_user["email"],
+                    "password": existing_user["password"],
+                },
+            ).status_code
+            == 302
+        )
 
     def test_mismatch_rejected(self, client, app, existing_user):
         token = _token(app, existing_user["email"])
@@ -114,16 +120,21 @@ class TestResetMatrix:
         assert resp.status_code in (200, 302)
         client.get("/logout")
         # First new password works.
-        assert client.post(
-            "/login",
-            data={"email": existing_user["email"], "password": "one-time-123"},
-            follow_redirects=False,
-        ).status_code == 302
+        assert (
+            client.post(
+                "/login",
+                data={"email": existing_user["email"], "password": "one-time-123"},
+                follow_redirects=False,
+            ).status_code
+            == 302
+        )
 
     def test_per_locale(self, client, app, existing_user):
         token = _token(app, existing_user["email"])
-        assert "nueva" in client.get(f"/reset/{token}?lang=es").data.decode() or \
-            "Restablecer" in client.get(f"/reset/{token}?lang=es").data.decode()
+        assert (
+            "nueva" in client.get(f"/reset/{token}?lang=es").data.decode()
+            or "Restablecer" in client.get(f"/reset/{token}?lang=es").data.decode()
+        )
 
 
 class TestChangeMatrix:
@@ -137,8 +148,11 @@ class TestChangeMatrix:
         _login(client, existing_user)
         resp = client.post(
             "/change",
-            data={"password": existing_user["password"], "new_password": "",
-                  "new_password_confirm": ""},
+            data={
+                "password": existing_user["password"],
+                "new_password": "",
+                "new_password_confirm": "",
+            },
         )
         assert resp.status_code == 200
 
@@ -146,8 +160,11 @@ class TestChangeMatrix:
         _login(client, existing_user)
         resp = client.post(
             "/change",
-            data={"password": existing_user["password"], "new_password": "a12345678",
-                  "new_password_confirm": "b12345678"},
+            data={
+                "password": existing_user["password"],
+                "new_password": "a12345678",
+                "new_password_confirm": "b12345678",
+            },
         )
         assert resp.status_code == 200
 
@@ -156,8 +173,11 @@ class TestChangeMatrix:
         with mail.record_messages() as outbox:
             resp = client.post(
                 "/change",
-                data={"password": "wrong-123", "new_password": "n12345678",
-                      "new_password_confirm": "n12345678"},
+                data={
+                    "password": "wrong-123",
+                    "new_password": "n12345678",
+                    "new_password_confirm": "n12345678",
+                },
             )
         assert resp.status_code == 200
         assert len(outbox) == 0
@@ -167,22 +187,29 @@ class TestChangeMatrix:
         with mail.record_messages() as outbox:
             resp = client.post(
                 "/change",
-                data={"password": existing_user["password"],
-                      "new_password": "changed-789",
-                      "new_password_confirm": "changed-789"},
+                data={
+                    "password": existing_user["password"],
+                    "new_password": "changed-789",
+                    "new_password_confirm": "changed-789",
+                },
                 follow_redirects=False,
             )
         assert resp.status_code == 302
         assert resp.headers["Location"] == "/"
         assert len(outbox) == 1
         client.get("/logout")
-        assert client.post(
-            "/login",
-            data={"email": existing_user["email"], "password": "changed-789"},
-            follow_redirects=False,
-        ).status_code == 302
+        assert (
+            client.post(
+                "/login",
+                data={"email": existing_user["email"], "password": "changed-789"},
+                follow_redirects=False,
+            ).status_code
+            == 302
+        )
 
     def test_per_locale(self, client, existing_user):
         _login(client, existing_user)
-        assert "Cambiar" in client.get("/change?lang=es").data.decode() or \
-            "contrase" in client.get("/change?lang=es").data.decode()
+        assert (
+            "Cambiar" in client.get("/change?lang=es").data.decode()
+            or "contrase" in client.get("/change?lang=es").data.decode()
+        )

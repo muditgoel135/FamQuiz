@@ -48,8 +48,13 @@ class TestIntegrityErrors:
 
         with app.app_context():
             existing = User.query.filter_by(email=existing_user["email"]).one()
-            db.session.add(User(email="dup2@example.com", password="x",
-                                fs_uniquifier=existing.fs_uniquifier))
+            db.session.add(
+                User(
+                    email="dup2@example.com",
+                    password="x",
+                    fs_uniquifier=existing.fs_uniquifier,
+                )
+            )
             with pytest.raises(IntegrityError):
                 db.session.commit()
             db.session.rollback()
@@ -96,11 +101,14 @@ class TestDeleteWithLobby:
         client.post("/api/game/start", json={"lobby_seconds": 60})
         other = _second(app)
         second = app.test_client()
-        second.post("/login", data={"email": other["email"],
-                                    "password": other["password"]})
+        second.post(
+            "/login", data={"email": other["email"], "password": other["password"]}
+        )
         assert second.delete("/api/account").get_json() == {"ok": True}
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "status"] == "lobby"
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["status"]
+            == "lobby"
+        )
         assert client.post("/api/game/cancel").status_code == 200
 
     def test_roles_cleanup(self, client, app, existing_user):
@@ -132,10 +140,14 @@ class TestDeleteWithLobby:
         _login(client, existing_user)
         assert client.delete("/api/account").get_json() == {"ok": True}
         second = app.test_client()
-        assert second.post(
-            "/login", data={"email": other["email"], "password": other["password"]},
-            follow_redirects=False,
-        ).status_code == 302
+        assert (
+            second.post(
+                "/login",
+                data={"email": other["email"], "password": other["password"]},
+                follow_redirects=False,
+            ).status_code
+            == 302
+        )
         assert second.get("/gameplay").status_code == 200
         with app.app_context():
             assert User.query.filter_by(email=other["email"]).count() == 1
@@ -146,8 +158,10 @@ class TestDeleteWithLobby:
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 60})
         assert client.post("/api/account/erase-data").get_json() == {"ok": True}
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "status"] == "lobby"
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["status"]
+            == "lobby"
+        )
         with app.app_context():
             assert User.query.filter_by(email=existing_user["email"]).count() == 1
 
@@ -157,15 +171,19 @@ class TestSequentialStarter:
         _login(client, existing_user)
         other = _second(app)
         second = app.test_client()
-        second.post("/login", data={"email": other["email"],
-                                    "password": other["password"]})
+        second.post(
+            "/login", data={"email": other["email"], "password": other["password"]}
+        )
         r1 = client.post("/api/game/start", json={"lobby_seconds": 60})
         r2 = second.post("/api/game/start", json={"lobby_seconds": 60})
         assert sorted([r1.status_code, r2.status_code]) == [201, 409]
         with app.app_context():
-            assert GameSession.query.filter(
-                GameSession.status.in_(["lobby", "active"])
-            ).count() == 1
+            assert (
+                GameSession.query.filter(
+                    GameSession.status.in_(["lobby", "active"])
+                ).count()
+                == 1
+            )
 
 
 class TestForcedRollback:
@@ -207,16 +225,17 @@ class TestForcedRollback:
         monkeypatch.undo()
         with app.app_context():
             db.session.rollback()
-            assert User.query.filter_by(
-                email=existing_user["email"]).one().display_name == "Keep"
+            assert (
+                User.query.filter_by(email=existing_user["email"]).one().display_name
+                == "Keep"
+            )
 
     def test_expire_tolerates_boom(self, app, monkeypatch):
         import routes as routes_module
 
         now = time.time()
         with app.app_context():
-            game = GameSession(status="lobby", starts_at=now - 1000,
-                               expires_at=now - 1)
+            game = GameSession(status="lobby", starts_at=now - 1000, expires_at=now - 1)
             db.session.add(game)
             db.session.commit()
 

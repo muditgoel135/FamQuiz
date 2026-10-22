@@ -227,11 +227,13 @@ class TestGameStatusJoin:
         assert body["game"]["powerups_enabled"] is False
 
     def test_join_without_game_404(self, client, existing_user):
-        """Verify join without game 404.
+        """
+        Verify join without game 404.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         assert client.post("/api/game/join").status_code == 404
 
@@ -244,6 +246,7 @@ class TestGameCancel:
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         client.post("/api/game/start", json={})
         other = _second_user(app)
@@ -256,22 +259,26 @@ class TestGameCancel:
         assert client.get("/api/game/status").get_json() == {"active_game": None}
 
     def test_cancel_without_game_404(self, client, existing_user):
-        """Verify cancel without game 404.
+        """
+        Verify cancel without game 404.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         assert client.post("/api/game/cancel").status_code == 404
 
 
 class TestGameEvents:
     def test_snapshot_once(self, client, existing_user):
-        """Verify snapshot once.
+        """
+        Verify snapshot once.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 60})
         resp = client.get("/api/game/events?once=1")
@@ -282,11 +289,13 @@ class TestGameEvents:
         assert "game-pending" in payload
 
     def test_snapshot_empty(self, client, existing_user):
-        """Verify snapshot empty.
+        """
+        Verify snapshot empty.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.get("/api/game/events?once=1")
         assert resp.status_code == 200
@@ -295,10 +304,12 @@ class TestGameEvents:
 
 class TestLobbyI18n:
     def test_banner_keys_in_catalogs(self, app):
-        """Verify banner keys in catalogs.
+        """
+        Verify banner keys in catalogs.
 
         :param app: The app fixture.
         """
+
         from app import TRANSLATIONS
 
         for locale in ("es", "hi", "zh_Hans"):
@@ -306,20 +317,24 @@ class TestLobbyI18n:
                 assert key in TRANSLATIONS[locale], (locale, key)
 
     def test_banner_keys_served_to_js(self, client):
-        """Verify banner keys served to js.
+        """
+        Verify banner keys served to js.
 
         :param client: The client fixture.
         """
+
         body = client.get("/api/i18n/es.json").get_json()
         for key in BANNER_KEYS:
             assert key in body["strings"], key
 
     def test_homepage_has_wait_and_notifier(self, client, existing_user):
-        """Verify homepage has wait and notifier.
+        """
+        Verify homepage has wait and notifier.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         html = client.get("/").data.decode()
         assert 'id="home-wait"' in html
@@ -327,18 +342,22 @@ class TestLobbyI18n:
         assert "game_notify.js" in html
 
     def test_homepage_wait_translated(self, client):
-        """Verify homepage wait translated.
+        """
+        Verify homepage wait translated.
 
         :param client: The client fixture.
         """
+
         html = client.get("/?lang=es").data.decode()
         assert "Tiempo de espera:" in html
 
     def test_guide_has_countdown_step(self, client):
-        """Verify guide has countdown step.
+        """
+        Verify guide has countdown step.
 
         :param client: The client fixture.
         """
+        
         html = client.get("/guide").data.decode()
         assert "countdown" in html.lower() or "cuenta atr" in html.lower()
 
@@ -920,9 +939,7 @@ class TestCsrfContract:
             db.session.commit()
         client = csrf_app.test_client()
         html = client.get("/login").data.decode()
-        login_match = re.search(
-            r'name="csrf_token"[^>]*value="([^"]+)"', html
-        )
+        login_match = re.search(r'name="csrf_token"[^>]*value="([^"]+)"', html)
         assert login_match is not None, "login CSRF token not found"
         token = login_match.group(1)
         resp = client.post(
@@ -936,9 +953,7 @@ class TestCsrfContract:
         )
         assert resp.status_code == 302, "CSRF login failed"
         meta = client.get("/").data.decode()
-        meta_match = re.search(
-            r'name="csrf-token" content="([^"]+)"', meta
-        )
+        meta_match = re.search(r'name="csrf-token" content="([^"]+)"', meta)
         assert meta_match is not None, "meta CSRF token not found"
         api_token = meta_match.group(1)
         return client, api_token

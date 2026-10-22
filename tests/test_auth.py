@@ -9,7 +9,8 @@ from app import User, db
 
 class TestSignup:
     def test_register_page_loads(self, client):
-        """Verify register page loads.
+        """
+        Verify register page loads.
 
         :param client: The client fixture.
         """
@@ -19,11 +20,13 @@ class TestSignup:
         assert b"Sign up" in resp.data
 
     def test_signup_success_redirects_home_and_creates_user(self, client, app):
-        """Verify signup success redirects home and creates user.
+        """
+        Verify signup success redirects home and creates user.
 
         :param client: The client fixture.
         :param app: The app fixture.
         """
+
         resp = client.post(
             "/register",
             data={
@@ -43,10 +46,12 @@ class TestSignup:
             assert user.password != "correct-horse-123"
 
     def test_signup_logs_user_in(self, client):
-        """Verify signup logs user in.
+        """
+        Verify signup logs user in.
 
         :param client: The client fixture.
         """
+
         client.post(
             "/register",
             data={
@@ -59,12 +64,14 @@ class TestSignup:
         assert client.get("/gameplay").status_code == 200
 
     def test_signup_duplicate_email_rejected(self, client, app, existing_user):
-        """Verify signup duplicate email rejected.
+        """
+        Verify signup duplicate email rejected.
 
         :param client: The client fixture.
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         resp = client.post(
             "/register",
             data={
@@ -78,11 +85,13 @@ class TestSignup:
             assert User.query.filter_by(email=existing_user["email"]).count() == 1
 
     def test_signup_password_mismatch_rejected(self, client, app):
-        """Verify signup password mismatch rejected.
+        """
+        Verify signup password mismatch rejected.
 
         :param client: The client fixture.
         :param app: The app fixture.
         """
+
         resp = client.post(
             "/register",
             data={
@@ -96,11 +105,13 @@ class TestSignup:
             assert User.query.filter_by(email="mismatch@example.com").count() == 0
 
     def test_signup_invalid_email_rejected(self, client, app):
-        """Verify signup invalid email rejected.
+        """
+        Verify signup invalid email rejected.
 
         :param client: The client fixture.
         :param app: The app fixture.
         """
+        
         resp = client.post(
             "/register",
             data={

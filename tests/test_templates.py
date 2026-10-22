@@ -63,9 +63,13 @@ class TestCsrfMeta:
         html = client.get(path).data.decode()
         assert 'name="csrf-token"' not in html
         assert "hidden_tag()" in _read(
-            "templates/login.html" if path == "/login"
-            else "templates/signup.html" if path == "/register"
-            else "templates/forgot_password.html"
+            "templates/login.html"
+            if path == "/login"
+            else (
+                "templates/signup.html"
+                if path == "/register"
+                else "templates/forgot_password.html"
+            )
         )
 
     def test_reset_token_hidden(self, client, app, existing_user):
@@ -146,9 +150,7 @@ class TestNotifierPresence:
         assert 'id="game-notify"' in html
         assert 'data-authenticated="1"' in html
 
-    @pytest.mark.parametrize(
-        "path", ["/login", "/register", "/reset", "/change"]
-    )
+    @pytest.mark.parametrize("path", ["/login", "/register", "/reset", "/change"])
     def test_auth_no_notifier(self, client, existing_user, path):
         if path == "/change":
             _login(client, existing_user)
@@ -271,9 +273,20 @@ class TestGameplayBranches:
         _login(client, existing_user)
         html = client.get("/gameplay").data.decode()
         for key in (
-            "noQuiz", "loadFail", "submitFail", "powerFail", "finishFail",
-            "complete", "youScored", "topWin", "best", "done", "question",
-            "score", "hintPrefix", "requestFail",
+            "noQuiz",
+            "loadFail",
+            "submitFail",
+            "powerFail",
+            "finishFail",
+            "complete",
+            "youScored",
+            "topWin",
+            "best",
+            "done",
+            "question",
+            "score",
+            "hintPrefix",
+            "requestFail",
         ):
             assert key in html, key
         assert "No active quiz. Start a game from the homepage." in html
@@ -283,7 +296,7 @@ class TestGameplayBranches:
         html = _read("templates/gameplay.html")
         start = html.find('getElementById("game-quit")')
         assert start != -1
-        assert "X-CSRFToken" in html[start:start + 800]
+        assert "X-CSRFToken" in html[start : start + 800]
         assert html.count('window.location.href = "{{ url_for(') >= 2
 
     def test_entryloop(self):
@@ -370,8 +383,13 @@ class TestSettingsBranches:
         _login(client, existing_user)
         html = client.get("/settings").data.decode()
         for key in (
-            "saved", "saveFail", "erased", "eraseFail", "deleteFail",
-            "confirmDelete", "confirmErase",
+            "saved",
+            "saveFail",
+            "erased",
+            "eraseFail",
+            "deleteFail",
+            "confirmDelete",
+            "confirmErase",
         ):
             assert key in html, key
         assert "Settings saved." in html
@@ -380,7 +398,7 @@ class TestSettingsBranches:
         html = _read("templates/settings.html")
         assert "X-CSRFToken" in html
         assert "settings_save" in html
-        assert 'method: \'DELETE\'' in html or 'method: "DELETE"' in html
+        assert "method: 'DELETE'" in html or 'method: "DELETE"' in html
         assert "confirm(window.I18N.confirmDelete)" in html
         assert "confirm(window.I18N.confirmErase)" in html
         assert "theme-dark" in html
@@ -475,8 +493,17 @@ class TestJsGuards:
             html = client.get(path).data.decode()
             assert "window.I18N_GAME" in html, path
             for key in (
-                "startingIn", "waiting", "live", "cancelled", "waitingTapJoin",
-                "remindersOff", "dndNote", "join", "dismiss", "leftNote", "rejoin",
+                "startingIn",
+                "waiting",
+                "live",
+                "cancelled",
+                "waitingTapJoin",
+                "remindersOff",
+                "dndNote",
+                "join",
+                "dismiss",
+                "leftNote",
+                "rejoin",
             ):
                 assert key in html, (path, key)
 
@@ -505,15 +532,20 @@ class TestJsGuards:
         html = _read("templates/settings.html")
         assert html.count('type="submit"') == 1
         assert "confirmDelete" in html
-        assert "account_erase_data" in html or "erase-data" in html or "erase_data" in html
+        assert (
+            "account_erase_data" in html or "erase-data" in html or "erase_data" in html
+        )
 
 
 class TestMailParity:
     def test_reset_instructions(self):
         txt = _read("templates/security/email/reset_instructions.txt")
         html = _read("templates/security/email/reset_instructions.html")
-        for key in ("Hello,", "Use this link to reset your password:",
-                    "This link will expire in:"):
+        for key in (
+            "Hello,",
+            "Use this link to reset your password:",
+            "This link will expire in:",
+        ):
             assert key in txt, key
             assert key in html, key
         assert "reset_link" in txt and "reset_link" in html
@@ -570,8 +602,9 @@ class TestTranslationCompleteness:
             for name in files:
                 if not name.endswith((".html", ".txt")):
                     continue
-                rel = os.path.relpath(os.path.join(root, name),
-                                      os.path.join(ROOT, "templates"))
+                rel = os.path.relpath(
+                    os.path.join(root, name), os.path.join(ROOT, "templates")
+                )
                 text = _read(os.path.join("templates", rel))
                 for match in pattern.findall(text):
                     # Templates wrap long strings across lines; collapse

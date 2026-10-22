@@ -54,9 +54,7 @@ def test_change_notice_live(tmp_path):
         )
         db.session.commit()
     client = flask_app.test_client()
-    client.post(
-        "/login", data={"email": recipient, "password": "live-mail-probe-123"}
-    )
+    client.post("/login", data={"email": recipient, "password": "live-mail-probe-123"})
     sent_after = datetime.now(timezone.utc)
     resp = client.post(
         "/change",

@@ -18,8 +18,7 @@ requires_key = pytest.mark.skipif(
 )
 
 
-def _profile(subject="Space", difficulty="easy", language="English",
-             grade="Grade 5"):
+def _profile(subject="Space", difficulty="easy", language="English", grade="Grade 5"):
     return SimpleNamespace(
         favorite_subject=subject,
         difficulty_level=difficulty,
@@ -58,9 +57,7 @@ class TestLiveLanguages:
         monkeypatch.setattr(app_module, "OLLAMA_MODEL", "gpt-oss:20b")
         prompt = " ".join(
             m["content"]
-            for m in app_module.build_quiz_messages(
-                _profile(language=lang), 1
-            )
+            for m in app_module.build_quiz_messages(_profile(language=lang), 1)
         )
         assert lang in prompt
         _valid(_retry(_profile(subject="Oceans", language=lang), 1), 1)

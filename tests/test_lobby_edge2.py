@@ -85,9 +85,15 @@ class TestGameIdTypes:
                 return SimpleNamespace(
                     message=SimpleNamespace(
                         content=_json.dumps(
-                            {"questions": [{"question": "Q?",
-                                            "options": ["A", "B", "C", "D"],
-                                            "answer_index": 0}]}
+                            {
+                                "questions": [
+                                    {
+                                        "question": "Q?",
+                                        "options": ["A", "B", "C", "D"],
+                                        "answer_index": 0,
+                                    }
+                                ]
+                            }
                         )
                     )
                 )
@@ -97,7 +103,10 @@ class TestGameIdTypes:
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 60})
         _live(app)
-        assert client.post("/api/quiz/generate", json={"num_questions": 1}).status_code == 200
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 1}).status_code
+            == 200
+        )
 
     def test_string_mismatch(self, client, app, existing_user, monkeypatch):
         self._setup_live_quiz(client, app, existing_user, monkeypatch)
@@ -128,9 +137,15 @@ class TestGameIdTypes:
                 return SimpleNamespace(
                     message=SimpleNamespace(
                         content=_json.dumps(
-                            {"questions": [{"question": "Q?",
-                                            "options": ["A", "B", "C", "D"],
-                                            "answer_index": 0}]}
+                            {
+                                "questions": [
+                                    {
+                                        "question": "Q?",
+                                        "options": ["A", "B", "C", "D"],
+                                        "answer_index": 0,
+                                    }
+                                ]
+                            }
                         )
                     )
                 )
@@ -138,7 +153,10 @@ class TestGameIdTypes:
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: _F())
         _login(client, existing_user)
-        assert client.post("/api/quiz/generate", json={"num_questions": 1}).status_code == 200
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 1}).status_code
+            == 200
+        )
         client.post("/api/game/start", json={"lobby_seconds": 60})
         resp = client.get("/api/quiz/state")
         assert resp.status_code == 404
@@ -157,9 +175,15 @@ class TestStaleAB:
                 return SimpleNamespace(
                     message=SimpleNamespace(
                         content=_json.dumps(
-                            {"questions": [{"question": "Q?",
-                                            "options": ["A", "B", "C", "D"],
-                                            "answer_index": 0}]}
+                            {
+                                "questions": [
+                                    {
+                                        "question": "Q?",
+                                        "options": ["A", "B", "C", "D"],
+                                        "answer_index": 0,
+                                    }
+                                ]
+                            }
                         )
                     )
                 )
@@ -173,15 +197,25 @@ class TestStaleAB:
         client.post("/api/game/cancel")
         client.post("/api/game/start", json={"lobby_seconds": 60})
         assert client.get("/api/quiz/state").status_code == 404
-        assert client.post(
-            "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
-        ).status_code == 404
-        assert client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 404
+        assert (
+            client.post(
+                "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
+            ).status_code
+            == 404
+        )
+        assert (
+            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 404
+        )
         assert client.post("/api/quiz/finish").status_code == 404
         with app.app_context():
             from app import User
 
-            assert User.query.filter_by(email=existing_user["email"]).one().total_games_played == 0
+            assert (
+                User.query.filter_by(email=existing_user["email"])
+                .one()
+                .total_games_played
+                == 0
+            )
 
     def test_matching_works(self, client, app, existing_user, monkeypatch):
         import json as _json
@@ -194,9 +228,15 @@ class TestStaleAB:
                 return SimpleNamespace(
                     message=SimpleNamespace(
                         content=_json.dumps(
-                            {"questions": [{"question": "Q?",
-                                            "options": ["A", "B", "C", "D"],
-                                            "answer_index": 0}]}
+                            {
+                                "questions": [
+                                    {
+                                        "question": "Q?",
+                                        "options": ["A", "B", "C", "D"],
+                                        "answer_index": 0,
+                                    }
+                                ]
+                            }
                         )
                     )
                 )
@@ -222,10 +262,14 @@ class TestClockResidual:
         from routes import _refresh_game_status
 
         now = time.time()
-        gid = self._new(app, status="active", starts_at=now + 100,
-                        expires_at=now + 1000)
+        gid = self._new(
+            app, status="active", starts_at=now + 100, expires_at=now + 1000
+        )
         with app.app_context():
-            assert _refresh_game_status(db.session.get(GameSession, gid)).status == "active"
+            assert (
+                _refresh_game_status(db.session.get(GameSession, gid)).status
+                == "active"
+            )
 
     def test_none_timestamps(self, app):
         from routes import _refresh_game_status
@@ -240,10 +284,10 @@ class TestClockResidual:
         from routes import _expire_stale_games
 
         now = time.time()
-        gid = self._new(app, status="active", starts_at=now - 1000,
-                        expires_at=now - 1)
-        gid2 = self._new(app, status="lobby", starts_at=now + 100,
-                         expires_at=now + 1000)
+        gid = self._new(app, status="active", starts_at=now - 1000, expires_at=now - 1)
+        gid2 = self._new(
+            app, status="lobby", starts_at=now + 100, expires_at=now + 1000
+        )
         with app.app_context():
             _expire_stale_games()
         with app.app_context():
@@ -254,8 +298,7 @@ class TestClockResidual:
         from routes import _expire_stale_games
 
         now = time.time()
-        gid = self._new(app, status="lobby", starts_at=now - 1000,
-                        expires_at=now - 1)
+        gid = self._new(app, status="lobby", starts_at=now - 1000, expires_at=now - 1)
         rolled = {}
 
         def _boom():
@@ -263,9 +306,7 @@ class TestClockResidual:
 
         orig_commit = db.session.commit
         monkeypatch.setattr(db.session, "commit", _boom)
-        monkeypatch.setattr(
-            db.session, "rollback", lambda: rolled.update(called=True)
-        )
+        monkeypatch.setattr(db.session, "rollback", lambda: rolled.update(called=True))
         with app.app_context():
             _expire_stale_games()  # must not raise
         assert rolled.get("called") is True
@@ -291,10 +332,20 @@ class TestGameDictNones:
         assert out["powerups_enabled"] is False
         assert out["is_starter"] is False
         assert out["you_left"] is False
-        assert set(out) == {"id", "status", "starts_in_ms", "starts_at",
-                            "expires_at", "num_questions", "difficulty",
-                            "powerups_enabled", "lobby_seconds", "join_url",
-                            "you_left", "is_starter"}
+        assert set(out) == {
+            "id",
+            "status",
+            "starts_in_ms",
+            "starts_at",
+            "expires_at",
+            "num_questions",
+            "difficulty",
+            "powerups_enabled",
+            "lobby_seconds",
+            "join_url",
+            "you_left",
+            "is_starter",
+        }
 
     def test_is_starter_exception(self, app):
         from unittest import mock
@@ -318,20 +369,32 @@ class TestSecondUserConflict:
     def test_exact(self, client, app, existing_user):
         _login(client, existing_user)
         gid = client.post("/api/game/start", json={"lobby_seconds": 60}).get_json()[
-            "game"]["id"]
+            "game"
+        ]["id"]
         other = _second(app)
         second = app.test_client()
-        second.post("/login", data={"email": other["email"],
-                                    "password": other["password"]})
+        second.post(
+            "/login", data={"email": other["email"], "password": other["password"]}
+        )
         resp = second.post("/api/game/start", json={})
         assert resp.status_code == 409
         body = resp.get_json()
         assert body["error"] == "A game is already live."
         assert body["game"]["id"] == gid
-        assert set(body["game"]) == {"id", "status", "starts_in_ms", "starts_at",
-                                     "expires_at", "num_questions", "difficulty",
-                                     "powerups_enabled", "lobby_seconds",
-                                     "join_url", "you_left", "is_starter"}
+        assert set(body["game"]) == {
+            "id",
+            "status",
+            "starts_in_ms",
+            "starts_at",
+            "expires_at",
+            "num_questions",
+            "difficulty",
+            "powerups_enabled",
+            "lobby_seconds",
+            "join_url",
+            "you_left",
+            "is_starter",
+        }
 
 
 class TestCancelVisibilityQuiz:
@@ -340,10 +403,13 @@ class TestCancelVisibilityQuiz:
         client.post("/api/game/start", json={"lobby_seconds": 60})
         other = _second(app)
         second = app.test_client()
-        second.post("/login", data={"email": other["email"],
-                                    "password": other["password"]})
-        assert second.get("/api/game/status").get_json()["active_game"][
-            "status"] == "lobby"
+        second.post(
+            "/login", data={"email": other["email"], "password": other["password"]}
+        )
+        assert (
+            second.get("/api/game/status").get_json()["active_game"]["status"]
+            == "lobby"
+        )
         body = client.post("/api/game/cancel").get_json()
         assert body["ok"] is True
         assert body["game"]["status"] == "cancelled"
@@ -351,7 +417,9 @@ class TestCancelVisibilityQuiz:
         assert second.get("/api/game/status").get_json() == {"active_game": None}
         resp = second.post("/api/game/join")
         assert resp.status_code == 404
-        assert resp.get_json() == {"error": "No live game. Start one from the homepage."}
+        assert resp.get_json() == {
+            "error": "No live game. Start one from the homepage."
+        }
 
     def test_quiz_survives_cancel(self, client, app, existing_user, monkeypatch):
         import json as _json
@@ -364,9 +432,15 @@ class TestCancelVisibilityQuiz:
                 return SimpleNamespace(
                     message=SimpleNamespace(
                         content=_json.dumps(
-                            {"questions": [{"question": "Q?",
-                                            "options": ["A", "B", "C", "D"],
-                                            "answer_index": 0}]}
+                            {
+                                "questions": [
+                                    {
+                                        "question": "Q?",
+                                        "options": ["A", "B", "C", "D"],
+                                        "answer_index": 0,
+                                    }
+                                ]
+                            }
                         )
                     )
                 )
@@ -398,13 +472,16 @@ class TestCancelVisibilityQuiz:
         _live(app)
         other = _second(app)
         second = app.test_client()
-        second.post("/login", data={"email": other["email"],
-                                    "password": other["password"]})
+        second.post(
+            "/login", data={"email": other["email"], "password": other["password"]}
+        )
         resp = second.post("/api/game/cancel")
         assert resp.status_code == 403
         assert resp.get_json() == {"error": "Only the starter can cancel this game."}
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "status"] == "active"
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["status"]
+            == "active"
+        )
 
 
 class TestSequentialFinish:
@@ -419,9 +496,15 @@ class TestSequentialFinish:
                 return SimpleNamespace(
                     message=SimpleNamespace(
                         content=_json.dumps(
-                            {"questions": [{"question": "Q?",
-                                            "options": ["A", "B", "C", "D"],
-                                            "answer_index": 0}]}
+                            {
+                                "questions": [
+                                    {
+                                        "question": "Q?",
+                                        "options": ["A", "B", "C", "D"],
+                                        "answer_index": 0,
+                                    }
+                                ]
+                            }
                         )
                     )
                 )
@@ -440,12 +523,22 @@ class TestSequentialFinish:
         first = client.post("/api/quiz/finish").get_json()
         second = client.post("/api/quiz/finish").get_json()
         assert first == second
-        assert set(first) == {"quiz_score", "total", "best_score", "is_win",
-                              "powerups_used"}
+        assert set(first) == {
+            "quiz_score",
+            "total",
+            "best_score",
+            "is_win",
+            "powerups_used",
+        }
         with client.application.app_context():
             from app import User
 
-            assert User.query.filter_by(email=existing_user["email"]).one().total_games_played == 1
+            assert (
+                User.query.filter_by(email=existing_user["email"])
+                .one()
+                .total_games_played
+                == 1
+            )
 
     def test_two_games_twice(self, client, app, existing_user, monkeypatch):
         import json as _json
@@ -459,9 +552,15 @@ class TestSequentialFinish:
                 return SimpleNamespace(
                     message=SimpleNamespace(
                         content=_json.dumps(
-                            {"questions": [{"question": "Q?",
-                                            "options": ["A", "B", "C", "D"],
-                                            "answer_index": 0}]}
+                            {
+                                "questions": [
+                                    {
+                                        "question": "Q?",
+                                        "options": ["A", "B", "C", "D"],
+                                        "answer_index": 0,
+                                    }
+                                ]
+                            }
                         )
                     )
                 )
@@ -475,13 +574,19 @@ class TestSequentialFinish:
             with client.session_transaction() as sess:
                 sess["quiz"]["started_at"] = _t.time() - 1
                 sess.modified = True
-            client.post("/api/quiz/answer",
-                        json={"option_index": 0, "question_index": 0})
+            client.post(
+                "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
+            )
             assert client.post("/api/quiz/finish").status_code == 200
         with app.app_context():
             from app import User
 
-            assert User.query.filter_by(email=existing_user["email"]).one().total_games_played == 2
+            assert (
+                User.query.filter_by(email=existing_user["email"])
+                .one()
+                .total_games_played
+                == 2
+            )
 
 
 class TestQuitLeftVsNew:
@@ -490,8 +595,10 @@ class TestQuitLeftVsNew:
         with client.session_transaction() as sess:
             sess["left_game_id"] = 9999
         client.post("/api/game/start", json={"lobby_seconds": 60})
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "you_left"] is False
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["you_left"]
+            is False
+        )
         assert client.post("/api/quiz/quit").get_json()["left_game_id"] is not None
 
     def test_quit_then_new_clears(self, client, existing_user):
@@ -500,16 +607,20 @@ class TestQuitLeftVsNew:
         client.post("/api/quiz/quit")
         client.post("/api/game/cancel")
         client.post("/api/game/start", json={"lobby_seconds": 60})
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "you_left"] is False
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["you_left"]
+            is False
+        )
 
     def test_join_clears(self, client, existing_user):
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 60})
         client.post("/api/quiz/quit")
         assert client.post("/api/game/join").status_code == 200
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "you_left"] is False
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["you_left"]
+            is False
+        )
 
 
 class TestEventsOnceExact:
@@ -539,11 +650,21 @@ class TestEventsOnceExact:
         assert payload["join_url"] == "/gameplay"
         assert payload["you_left"] is False
         assert payload["is_starter"] is True
-        assert set(payload) == {"type", "id", "status", "starts_in_ms",
-                                "starts_at", "expires_at", "num_questions",
-                                "difficulty", "powerups_enabled",
-                                "lobby_seconds", "join_url", "you_left",
-                                "is_starter"}
+        assert set(payload) == {
+            "type",
+            "id",
+            "status",
+            "starts_in_ms",
+            "starts_at",
+            "expires_at",
+            "num_questions",
+            "difficulty",
+            "powerups_enabled",
+            "lobby_seconds",
+            "join_url",
+            "you_left",
+            "is_starter",
+        }
 
     def test_live(self, client, app, existing_user):
         _login(client, existing_user)
@@ -559,7 +680,9 @@ class TestEventsOnceExact:
         client.post("/api/game/start", json={"lobby_seconds": 60})
         client.post("/api/game/cancel")
         assert self._payload(client.get("/api/game/events?once=1")) == {
-            "type": "game-none", "active_game": None}
+            "type": "game-none",
+            "active_game": None,
+        }
 
 
 class TestSettingsI18nReverse:
@@ -570,8 +693,12 @@ class TestSettingsI18nReverse:
         assert 'id="settings-difficulty"' in html
 
     def test_i18n_all(self, client):
-        for loc, html_lang in [("en", "en"), ("es", "es"), ("hi", "hi"),
-                               ("zh_Hans", "zh-Hans")]:
+        for loc, html_lang in [
+            ("en", "en"),
+            ("es", "es"),
+            ("hi", "hi"),
+            ("zh_Hans", "zh-Hans"),
+        ]:
             body = client.get(f"/api/i18n/{loc}.json").get_json()
             assert body["locale"] == loc
             assert body["html_lang"] == html_lang

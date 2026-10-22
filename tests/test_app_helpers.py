@@ -26,7 +26,6 @@ from app import (
     SUPPORTED_LOCALES,
 )
 
-
 # ---------------------------------------------------------------------------
 # _env helpers
 # ---------------------------------------------------------------------------
@@ -189,9 +188,7 @@ class TestTranslate:
         assert app_module.translate("Hello,", "en") == "Hello,"
 
     def test_known_es(self, monkeypatch):
-        monkeypatch.setattr(
-            app_module, "TRANSLATIONS", {"es": {"Hello,": "Hola,"}}
-        )
+        monkeypatch.setattr(app_module, "TRANSLATIONS", {"es": {"Hello,": "Hola,"}})
         assert app_module.translate("Hello,", "es") == "Hola,"
 
     def test_unknown_msg_fallback(self, monkeypatch):
@@ -363,9 +360,7 @@ class TestGetOllamaClient:
 
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "OLLAMA_HOST", "https://ollama.com")
-        monkeypatch.setitem(
-            sys.modules, "ollama", SimpleNamespace(Client=_Client)
-        )
+        monkeypatch.setitem(sys.modules, "ollama", SimpleNamespace(Client=_Client))
         client = app_module.get_ollama_client()
         assert isinstance(client, _Client)
         assert seen["host"] == "https://ollama.com"
@@ -407,7 +402,9 @@ class TestBuildQuizMessages:
             assert token in msgs[1]["content"]
 
     def test_explicit_overrides(self):
-        msgs = app_module.build_quiz_messages(_profile(difficulty_level="hard"), 2, "easy")
+        msgs = app_module.build_quiz_messages(
+            _profile(difficulty_level="hard"), 2, "easy"
+        )
         prompt = msgs[1]["content"]
         assert "easy" in prompt
         assert "hard" not in prompt
@@ -424,8 +421,7 @@ class TestBuildQuizMessages:
         user = _profile(difficulty_level="hard")
         for bad in ("", None):
             prompt = " ".join(
-                m["content"]
-                for m in app_module.build_quiz_messages(user, 2, bad)
+                m["content"] for m in app_module.build_quiz_messages(user, 2, bad)
             )
             assert "hard" in prompt
 
@@ -449,9 +445,9 @@ class TestBuildQuizMessages:
         assert "all ages" in prompt
 
     def test_blank_subject_general(self):
-        prompt = app_module.build_quiz_messages(
-            _profile(favorite_subject="   "), 1
-        )[1]["content"]
+        prompt = app_module.build_quiz_messages(_profile(favorite_subject="   "), 1)[1][
+            "content"
+        ]
         assert "general" in prompt
 
     def test_multiline_collapsed(self):
@@ -494,7 +490,8 @@ class TestBuildQuizMessages:
     )
     def test_simplified(self, lang, expected):
         prompt = " ".join(
-            m["content"] for m in app_module.build_quiz_messages(_profile(language=lang), 1)
+            m["content"]
+            for m in app_module.build_quiz_messages(_profile(language=lang), 1)
         )
         assert ("Use Simplified Chinese." in prompt) is expected
 
@@ -516,7 +513,9 @@ class TestStripCodeFences:
         assert app_module.strip_code_fences('```JSON {"a":1}```') == '{"a":1}'
 
     def test_surrounding_ws(self):
-        assert app_module.strip_code_fences('  \n```json\n{"a":1}\n```\n  ') == '{"a":1}'
+        assert (
+            app_module.strip_code_fences('  \n```json\n{"a":1}\n```\n  ') == '{"a":1}'
+        )
 
     @pytest.mark.parametrize("v", [None, True, 5.5])
     def test_nonstring(self, v):
@@ -601,8 +600,7 @@ class TestResolveAnswerIndex:
     def test_letter_shorthand_ignores_duplicates(self):
         # Single A-D letters resolve via shorthand before text matching.
         assert (
-            app_module.resolve_answer_index({"answer": "A"}, ["A", "A", "B", "C"])
-            == 0
+            app_module.resolve_answer_index({"answer": "A"}, ["A", "A", "B", "C"]) == 0
         )
 
     def test_missing(self):
@@ -626,7 +624,7 @@ class TestParseQuizContentUnits:
         with pytest.raises(app_module.QuizGenerationError, match="unreadable"):
             app_module.parse_quiz_content("not json at all {{{")
 
-    @pytest.mark.parametrize("v", ['42', '"str"', "null"])
+    @pytest.mark.parametrize("v", ["42", '"str"', "null"])
     def test_non_object(self, v):
         with pytest.raises(app_module.QuizGenerationError, match="unreadable"):
             app_module.parse_quiz_content(v)
@@ -941,9 +939,7 @@ class TestRecipientLocale:
     def test_context_unsupported(self, app, monkeypatch):
         monkeypatch.setattr(app_module, "get_locale", lambda: "hi")
         assert (
-            app_module._recipient_locale(
-                "x@y.com", SimpleNamespace(language="Klingon")
-            )
+            app_module._recipient_locale("x@y.com", SimpleNamespace(language="Klingon"))
             == "hi"
         )
 
@@ -964,7 +960,8 @@ class TestRecipientLocale:
         self._set_lang(app, existing_user["email"], "Spanish")
         with app.test_request_context("/"):
             assert (
-                app_module._recipient_locale(f"Player <{existing_user['email']}>") == "es"
+                app_module._recipient_locale(f"Player <{existing_user['email']}>")
+                == "es"
             )
 
     @pytest.mark.parametrize("wrap", [list, tuple])
@@ -985,6 +982,7 @@ class TestRecipientLocale:
         from app import User
 
         with app.test_request_context("/"):
+
             def _boom(*a, **k):
                 raise RuntimeError("boom")
 
@@ -1053,18 +1051,14 @@ class TestTranslatedMailUtil:
         from flask import g
 
         monkeypatch.setattr(app_module, "_recipient_locale", lambda *a, **k: "es")
-        monkeypatch.setattr(
-            app_module, "translate", lambda s, loc: "TRANS" if s else s
-        )
+        monkeypatch.setattr(app_module, "translate", lambda s, loc: "TRANS" if s else s)
         seen = {}
 
         def _super(self, template, subject, recipient, sender, body, html, **kw):
             seen.update(subject=subject, locale=g.get("email_locale"))
             return "sent"
 
-        monkeypatch.setattr(
-            "flask_security.mail_util.MailUtil.send_mail", _super
-        )
+        monkeypatch.setattr("flask_security.mail_util.MailUtil.send_mail", _super)
         with app.test_request_context("/"):
             out = self._util().send_mail(
                 "t", "Password reset instructions", "a@b.com", "s", "b", "h"
@@ -1113,9 +1107,7 @@ class TestTranslatedMailUtil:
         def _boom(self, *a, **k):
             raise RuntimeError("smtp fail")
 
-        monkeypatch.setattr(
-            "flask_security.mail_util.MailUtil.send_mail", _boom
-        )
+        monkeypatch.setattr("flask_security.mail_util.MailUtil.send_mail", _boom)
         with app.test_request_context("/"):
             with pytest.raises(RuntimeError):
                 self._util().send_mail("t", "s", "a@b.com", "x", "b", "h")
@@ -1134,9 +1126,7 @@ class TestDisplayName:
     def test_display_wins(self):
         assert (
             app_module.display_name_of(
-                SimpleNamespace(
-                    display_name="Ava", nickname="Tommy", email="x@y.com"
-                )
+                SimpleNamespace(display_name="Ava", nickname="Tommy", email="x@y.com")
             )
             == "Ava"
         )
@@ -1166,7 +1156,9 @@ class TestDisplayName:
     def test_email_local(self):
         assert (
             app_module.display_name_of(
-                SimpleNamespace(display_name=None, nickname=None, email="player@example.com")
+                SimpleNamespace(
+                    display_name=None, nickname=None, email="player@example.com"
+                )
             )
             == "player"
         )
@@ -1318,9 +1310,8 @@ class TestPrintLanUrls:
 
         monkeypatch.setattr(_sock, "socket", _S)
         monkeypatch.setattr(
-            "subprocess.run", lambda *a, **k: (_ for _ in ()).throw(
-                FileNotFoundError("no tailscale")
-            ),
+            "subprocess.run",
+            lambda *a, **k: (_ for _ in ()).throw(FileNotFoundError("no tailscale")),
         )
         app_module._print_lan_urls(5000)
         out = capsys.readouterr().out

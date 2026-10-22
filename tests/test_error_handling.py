@@ -43,8 +43,14 @@ class Test500NoLeak:
 class TestMalformedJson:
     @pytest.mark.parametrize(
         "path",
-        ["/api/settings/save", "/api/quiz/generate", "/api/game/start",
-         "/api/quiz/answer", "/api/quiz/powerup", "/api/quiz/finish"],
+        [
+            "/api/settings/save",
+            "/api/quiz/generate",
+            "/api/game/start",
+            "/api/quiz/answer",
+            "/api/quiz/powerup",
+            "/api/quiz/finish",
+        ],
     )
     def test_truncated(self, client, existing_user, path):
         _login(client, existing_user)
@@ -53,8 +59,12 @@ class TestMalformedJson:
 
     @pytest.mark.parametrize(
         "path",
-        ["/api/settings/save", "/api/quiz/generate", "/api/game/start",
-         "/api/quiz/finish"],
+        [
+            "/api/settings/save",
+            "/api/quiz/generate",
+            "/api/game/start",
+            "/api/quiz/finish",
+        ],
     )
     def test_wrong_type(self, client, existing_user, path):
         _login(client, existing_user)
@@ -71,8 +81,14 @@ class TestMalformedJson:
 
     @pytest.mark.parametrize(
         "path",
-        ["/api/settings/save", "/api/quiz/generate", "/api/game/start",
-         "/api/quiz/answer", "/api/quiz/powerup", "/api/quiz/finish"],
+        [
+            "/api/settings/save",
+            "/api/quiz/generate",
+            "/api/game/start",
+            "/api/quiz/answer",
+            "/api/quiz/powerup",
+            "/api/quiz/finish",
+        ],
     )
     def test_array_body_never_500(self, client, existing_user, path):
         # Truthy non-dict JSON has no .get: the isinstance guard degrades
@@ -99,8 +115,10 @@ class TestOversized:
         assert resp.status_code == 400
         assert "display_name" in resp.get_json()["fields"]
         with app.app_context():
-            assert User.query.filter_by(
-                email=existing_user["email"]).one().display_name != "x" * 10000
+            assert (
+                User.query.filter_by(email=existing_user["email"]).one().display_name
+                != "x" * 10000
+            )
 
     def test_over_1mb_aborted(self, client, existing_user):
         # MAX_CONTENT_LENGTH=1MB: Flask aborts before the view (413),
@@ -117,14 +135,15 @@ class TestOversized:
         _login(client, existing_user)
         fake_ollama(n=MAX_QUIZ_QUESTIONS)
         body = client.post(
-            "/api/quiz/generate", json={"num_questions": 10 ** 9}
+            "/api/quiz/generate", json={"num_questions": 10**9}
         ).get_json()
         assert body["total"] <= MAX_QUIZ_QUESTIONS
 
 
 class TestUnicode:
     @pytest.mark.parametrize(
-        "val", ["🎉 family", "مرحبا", "é̂️", "𝕳𝖊𝖑𝖑𝖔 test"],
+        "val",
+        ["🎉 family", "مرحبا", "é̂️", "𝕳𝖊𝖑𝖑𝖔 test"],
     )
     def test_roundtrip(self, client, existing_user, val):
         _login(client, existing_user)
@@ -157,7 +176,12 @@ class TestUnicode:
             user.display_name = "🎉 Tester"
             db.session.commit()
         with mail.record_messages() as outbox:
-            assert client.post("/reset", data={"email": existing_user["email"]}).status_code == 200
+            assert (
+                client.post(
+                    "/reset", data={"email": existing_user["email"]}
+                ).status_code
+                == 200
+            )
         assert len(outbox) == 1
         outbox[0].body.encode("utf-8")
 
@@ -165,14 +189,24 @@ class TestUnicode:
 class TestFrozenTimeMath:
     @pytest.mark.parametrize(
         "elapsed_ms,expected",
-        [(0, 1500), (2000, 1467), (7500, 1375), (15000, 1250),
-         (30000, 1000), (40000, 1000)],
+        [
+            (0, 1500),
+            (2000, 1467),
+            (7500, 1375),
+            (15000, 1250),
+            (30000, 1000),
+            (40000, 1000),
+        ],
     )
-    def test_exact_table(self, client, existing_user, fake_ollama, frozen_time,
-                         elapsed_ms, expected):
+    def test_exact_table(
+        self, client, existing_user, fake_ollama, frozen_time, elapsed_ms, expected
+    ):
         _login(client, existing_user)
         fake_ollama(n=1)
-        assert client.post("/api/quiz/generate", json={"num_questions": 1}).status_code == 200
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 1}).status_code
+            == 200
+        )
         assert client.get("/api/quiz/state").status_code == 200
         with client.session_transaction() as sess:
             sess["quiz"]["started_at"] = frozen_time["now"]

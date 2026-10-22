@@ -31,13 +31,17 @@ class TestSettingsMatrix:
         assert _save(client, {"grade_occupation": 123}).status_code == 400
         assert _save(client, {"favorite_subject": "x" * 81}).status_code == 400
         assert _save(client, {"grade_occupation": "Grade 5"}).status_code == 200
-        assert _save(client, {"favorite_subject": "  Math   Science "}).status_code == 200
+        assert (
+            _save(client, {"favorite_subject": "  Math   Science "}).status_code == 200
+        )
 
     def test_language(self, client, existing_user):
         _login(client, existing_user)
         for lang, loc in [
-            ("English", "en"), ("Spanish", "es"),
-            ("Hindi", "hi"), ("Mandarin Chinese", "zh_Hans"),
+            ("English", "en"),
+            ("Spanish", "es"),
+            ("Hindi", "hi"),
+            ("Mandarin Chinese", "zh_Hans"),
         ]:
             assert _save(client, {"language": lang}).status_code == 200
             with client.session_transaction() as sess:
@@ -105,8 +109,11 @@ class TestSettingsMatrix:
         assert resp.status_code == 400
         fields = resp.get_json()["fields"]
         assert set(fields) >= {
-            "language", "theme_mode", "difficulty_level",
-            "status", "default_num_questions",
+            "language",
+            "theme_mode",
+            "difficulty_level",
+            "status",
+            "default_num_questions",
         }
         with app.app_context():
             user = User.query.filter_by(email=existing_user["email"]).one()
@@ -136,13 +143,17 @@ class TestSettingsMatrix:
         _save(client, {"language": "Spanish"})
         with client.session_transaction() as sess:
             assert sess.get("locale") == "es"
-        assert "Guardar" in client.get("/settings").data.decode() or \
-            "Ajustes" in client.get("/settings").data.decode()
+        assert (
+            "Guardar" in client.get("/settings").data.decode()
+            or "Ajustes" in client.get("/settings").data.decode()
+        )
 
     def test_per_locale(self, client, existing_user):
         _login(client, existing_user)
-        assert "Ajustes" in client.get("/settings?lang=es").data.decode() or \
-            "Guardar" in client.get("/settings?lang=es").data.decode()
+        assert (
+            "Ajustes" in client.get("/settings?lang=es").data.decode()
+            or "Guardar" in client.get("/settings?lang=es").data.decode()
+        )
         assert 'lang="hi"' in client.get("/settings?lang=hi").data.decode()
         assert 'lang="zh-Hans"' in client.get("/settings?lang=zh_Hans").data.decode()
 
@@ -157,8 +168,15 @@ class TestSettingsMatrix:
         class _F:
             def chat(self, model="", messages=None, **kwargs):
                 content = _json.dumps(
-                    {"questions": [{"question": "Q?", "options": ["A", "B", "C", "D"],
-                                    "answer_index": 0}]}
+                    {
+                        "questions": [
+                            {
+                                "question": "Q?",
+                                "options": ["A", "B", "C", "D"],
+                                "answer_index": 0,
+                            }
+                        ]
+                    }
                 )
                 return SimpleNamespace(message=SimpleNamespace(content=content))
 

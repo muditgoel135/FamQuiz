@@ -12,8 +12,11 @@ class TestSignupMatrix:
     def test_empty_email(self, client, app):
         resp = client.post(
             "/register",
-            data={"email": "", "password": "correct-horse-123",
-                  "password_confirm": "correct-horse-123"},
+            data={
+                "email": "",
+                "password": "correct-horse-123",
+                "password_confirm": "correct-horse-123",
+            },
         )
         assert resp.status_code == 200
         assert _count(app, "") == 0
@@ -21,8 +24,7 @@ class TestSignupMatrix:
     def test_empty_password(self, client, app):
         resp = client.post(
             "/register",
-            data={"email": "e@example.com", "password": "",
-                  "password_confirm": ""},
+            data={"email": "e@example.com", "password": "", "password_confirm": ""},
         )
         assert resp.status_code == 200
         assert _count(app, "e@example.com") == 0
@@ -71,9 +73,11 @@ class TestSignupMatrix:
         assert client.get("/gameplay").status_code == 200
 
     def test_per_locale(self, client):
-        assert "Registrarse" in client.get("/register?lang=es").data.decode() or \
-            "Regístrate" in client.get("/register?lang=es").data.decode() or \
-            "Sign up" in client.get("/register?lang=es").data.decode()
+        assert (
+            "Registrarse" in client.get("/register?lang=es").data.decode()
+            or "Regístrate" in client.get("/register?lang=es").data.decode()
+            or "Sign up" in client.get("/register?lang=es").data.decode()
+        )
         assert 'lang="es"' in client.get("/register?lang=es").data.decode()
         assert 'lang="hi"' in client.get("/register?lang=hi").data.decode()
         assert 'lang="zh-Hans"' in client.get("/register?lang=zh_Hans").data.decode()
@@ -81,13 +85,18 @@ class TestSignupMatrix:
 
 class TestLoginMatrix:
     def test_empty_rejected(self, client):
-        assert client.post("/login", data={"email": "", "password": ""}).status_code == 200
+        assert (
+            client.post("/login", data={"email": "", "password": ""}).status_code == 200
+        )
         assert client.get("/gameplay").status_code == 302
 
     def test_invalid_format(self, client):
-        assert client.post(
-            "/login", data={"email": "not-an-email", "password": "x"}
-        ).status_code == 200
+        assert (
+            client.post(
+                "/login", data={"email": "not-an-email", "password": "x"}
+            ).status_code
+            == 200
+        )
 
     def test_success_home(self, client, existing_user):
         resp = client.post(

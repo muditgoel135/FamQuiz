@@ -195,18 +195,18 @@ Open `.env` only with a plain-text editor: Notepad on Windows, and on Mac use Te
 3. Find the two passwords: open Account → **API Key Management**. Copy the long **API Key** (this goes into `MAIL_USERNAME` in `.env`) and the **Secret Key** (this goes into `MAIL_PASSWORD`). They are two different passwords — don’t swap them. Note: keys and sender addresses are on different pages — you won’t see them together.
 4. In your `FamQuiz` folder open `.env` in Notepad (plain text). Copy these lines exactly, do not edit the server/port lines. Replace only the placeholders:
 
-```env
-MAIL_SERVER=in-v3.mailjet.com
-MAIL_PORT=587
-MAIL_USE_TLS=true
-MAIL_USE_SSL=false
-MAIL_USERNAME=paste-api-key-here
-MAIL_PASSWORD=paste-secret-here
-MAIL_DEFAULT_SENDER=FamQuiz <you@your-verified-email.com>
-SECURITY_EMAIL_SENDER=FamQuiz <you@your-verified-email.com>
-```
+   ```env
+   MAIL_SERVER=in-v3.mailjet.com
+   MAIL_PORT=587
+   MAIL_USE_TLS=true
+   MAIL_USE_SSL=false
+   MAIL_USERNAME=paste-api-key-here
+   MAIL_PASSWORD=paste-secret-here
+   MAIL_DEFAULT_SENDER=FamQuiz <you@your-verified-email.com>
+   SECURITY_EMAIL_SENDER=FamQuiz <you@your-verified-email.com>
+   ```
 
-For the last two lines keep the format `FamQuiz <...>` with brackets — just replace `you@your-verified-email.com` with the green-check Gmail from Step 2. Save, then restart the app (`Ctrl+C`, then `python app.py` again).
+   For the last two lines keep the format `FamQuiz <...>` with brackets — just replace `you@your-verified-email.com` with the green-check Gmail from Step 2. Save, then restart the app (`Ctrl+C`, then `python app.py` again).
 
 5. Test: in FamQuiz click Log out → Forgot password → type your green-check email → check that inbox + Spam in 1–2 minutes.
 
@@ -344,3 +344,192 @@ sqlite3 instance/site.db "select email,best_score,total_wins from user;"
 ```
 
 `instance/` and `.env` are ignored by git and never served to players.
+
+## 11. One-file version: build FamQuiz as a single program (optional — helpers only)
+
+This section is for the helper who wants the game as **one program file** (`FamQuiz.exe` on Windows, `FamQuiz` on Mac/Linux), so the main computer does not need Python or the code folder. Players notice nothing — same game, same links, same `.env` secrets.
+
+**Before you start:** you must have finished Section 3 at least once (the `.venv` helper folder exists) and have your `.env` filled (Sections 4 and 6). You build **on the same kind of computer that will run the game**: a file built on Windows runs only on Windows, a build made on a Mac runs only on a Mac, Linux likewise. Want all three kinds? Repeat 11.1–11.6 on each machine.
+
+**Good to know:** the finished file is one program of about 30–60 MB. Opening it takes 2–5 seconds longer than `python app.py` (it unpacks itself first). Closing its black window still stops the game for everyone, exactly like Section 7.
+
+### 11.1 Install the builder (once)
+
+Open the instruction window inside the `FamQuiz` folder (Section 2) and make sure you see `(.venv)` at the start of the line (Section 3). If you closed the window, redo the activate line(s) from Section 3 first. Then copy this one line, paste, Enter, wait.
+
+**Windows:**
+
+```powershell
+python -m pip install "pyinstaller>=6.15"
+```
+
+**Mac / Linux:**
+
+```bash
+python3 -m pip install "pyinstaller>=6.15"
+```
+
+What you should see: the last line says `Successfully installed pyinstaller-6.x.x`. This project's Python needs PyInstaller **6.15 or newer**. If you see a red error instead, you are not in the right folder or `(.venv)` is missing — recheck Sections 2 and 3.
+
+### 11.2 Create two small text files in the `FamQuiz` folder
+
+Both go **next to `app.py`** (not inside any subfolder). Nothing in `app.py`, `routes.py` or any other game file changes — these two files are only for packaging. After adding them you can re-run the quick checks any time (`pytest tests/ -q --ignore=tests/test_ollama_live.py --ignore=tests/test_live_mail.py` → still `120 passed`).
+
+**File 1 — `run_famquiz.py`** (the small starter for the packaged game: it keeps your `.env` and the scores database in the folder you put the exe in, instead of inside the exe's throw-away unpack space — without it, scores would vanish on every close). New file, paste exactly:
+
+```python
+import os
+import sys
+
+# In a frozen exe, place .env + database next to FamQuiz.exe (not in the
+# self-extracting temp folder, which is deleted on exit).
+if getattr(sys, "frozen", False):
+    base_dir = os.path.dirname(sys.executable)
+else:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(base_dir, ".env"))
+
+instance = os.path.join(base_dir, "instance")
+os.makedirs(instance, exist_ok=True)
+os.environ["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
+    instance, "site.db"
+).replace("\\", "/")
+
+import app as app_module
+
+port = int(os.getenv("PORT", 5000))
+app_module._print_lan_urls(port)
+app_module.app.run(debug=False, host="0.0.0.0", port=port)
+```
+
+**File 2 — `FamQuiz.spec`** (the build recipe: what goes inside the one file — templates, game theme and style files, all four UI languages — and what stays out, like the test files; it also packs Flask's login library parts that plain scanning misses). New file, paste exactly:
+
+```python
+# -*- mode: python ; coding: utf-8 -*-
+
+from PyInstaller.utils.hooks import collect_all
+
+fs_data, fs_binaries, fs_hidden = collect_all("flask_security")
+
+a = Analysis(
+    ["run_famquiz.py"],
+    pathex=[],
+    binaries=fs_binaries,
+    datas=[
+        ("templates", "templates"),
+        ("static", "static"),
+        ("translations.json", "."),
+    ],
+    hiddenimports=fs_hidden,
+    excludes=["tests", "pytest", "pytest_cache"],
+    noarchive=False,
+)
+
+pyz = PYZ(a.pure)
+
+exe = EXE(
+    pyz,
+    a.scripts,
+    a.binaries,
+    a.datas,
+    [],
+    name="FamQuiz",
+    console=True,
+    debug=False,
+    upx=False,
+)
+
+# No COLLECT(): placing the EXE call last (without it) is what makes this
+# a single-file (onefile) build. Data lands in the exe's temp folder,
+# exactly where app.py and Flask look for it when frozen.
+```
+
+> Builder note: the `EXE(...)` call last without a `COLLECT(...)` section is what makes this a **single-file** build. `console=True` keeps the black window visible; setting it to `False` would make an invisible game nobody can stop.
+
+### 11.3 Build the one file
+
+**Windows:**
+
+```powershell
+python -m PyInstaller --clean FamQuiz.spec
+```
+
+**Mac / Linux:**
+
+```bash
+python3 -m PyInstaller --clean FamQuiz.spec
+```
+
+Takes about 1 minute. You should see a final line like `Building EXE from EXE-00.toc ... successfully`. The result:
+
+* Windows: `dist\FamQuiz\FamQuiz.exe`
+* Mac / Linux: `dist/FamQuiz/FamQuiz`
+
+The `build\` folder next to it is working material; delete it freely (Windows `Remove-Item -LiteralPath build -Recurse -Force`; Mac/Linux `rm -rf build`). Opening many warnings inside `build\` with words like "not found" is normal — only worry if the final `successfully` line is missing.
+
+> Tip: building inside a synced folder (Google Drive/OneDrive/Dropbox) can turn 1 minute into 10. If it crawls, copy the whole `FamQuiz` folder to Documents, build there, then move the finished file back.
+
+### 11.4 Put your secret settings next to the file
+
+**Windows:**
+
+```powershell
+copy .env dist\FamQuiz\
+```
+
+**Mac / Linux:**
+
+```bash
+cp .env dist/FamQuiz/
+```
+
+On first run the scores database appears **next to the exe** inside a new `instance\site.db` (Windows) or `instance/site.db` (Mac/Linux). Treat the exe's folder like the old `FamQuiz` folder: `.env` holds your secrets (Section 6 safety note), and Section 10.4 applies as is.
+
+### 11.5 First run
+
+* **Windows:** double-click `dist\FamQuiz\FamQuiz.exe`.
+  * If Windows shows "Windows protected your PC": More info → **Run anyway**. This appears because the file has no paid digital signature; it is normal for one-file programs.
+  * If Windows asks about firewall: tick **Private**, untick Public → **Allow** (same choice as Section 5A.3).
+* **Mac / Linux:** start it from a Terminal, not the file manager. On Mac also the very first time: if macOS refuses to open it ("unidentified developer"), right-click `FamQuiz` → **Open** → **Open** again. Then:
+
+```bash
+cd dist/FamQuiz
+./FamQuiz
+```
+
+Why Terminal on Mac/Linux: double-clicking this kind of program there often runs it **invisibly** — no window with the web addresses, no easy way to stop it. From Terminal you see the same three `FamQuiz on this computer / Wi-Fi / Tailscale` lines as always, and Ctrl+C stops the game.
+
+### 11.6 Check it works (once) + every day after
+
+Every day: Windows → double-click the exe. Mac/Linux → the two Terminal lines from 11.5. Players join exactly as in Sections 5A/5B (`:5000` links, Guide page shows the port).
+
+Quick one-time check list after building:
+
+1. The black window prints the three `FamQuiz on ...` URLs, no red errors.
+2. `http://127.0.0.1:5000` shows the light-blue FamQuiz screen (means styles are packed correctly).
+3. Sign up a test user (means logins work in the packaged game).
+4. Start a game with 2 questions → questions appear (means your `.env` Ollama key is read).
+5. Profile → Settings → switch language to Spanish → the screen switches (means all languages are packed).
+6. Close the window, start the exe again → your test user and score are still there (means the database now lives next to the exe and survives).
+
+### 11.7 When a helper updates the game
+
+Repeat only 11.3. The build overwrites the old program file; your `.env` and `instance\site.db` next to it are untouched. No other step needs repeating.
+
+### 11.8 If something goes wrong (exe version only)
+
+Everything from the regular list at the top still applies. Exe-specific fixes:
+
+1. **The black window flashes and disappears** → open the window inside `dist\FamQuiz` (Windows: type `powershell` in the address bar; Mac/Linux: right-click the folder → Open in Terminal) and run `.\FamQuiz.exe` (Windows) or `./FamQuiz` (Mac/Linux). The error text stays on screen — cover any secrets (lines starting `OLLAMA_API_KEY`, `MAIL_USERNAME`, `SECRET_KEY` or numbers starting `100.`) before photographing.
+2. **`ModuleNotFoundError: xxx`** in that error → a helper adds the missing name to `FamQuiz.spec` the same way `flask_security` is handled (`collect_all("xxx")`), then rebuilds (11.3).
+3. **"Port in use / address already in use"** → the game is already running in another window (`python app.py` or a second exe). Close that one, or set a new door number with `PORT` (regular troubleshooting #8).
+4. **Antivirus/Defender removes or blocks the exe** → restore it and add an exception; one-file programs are flagged most, and this one is just packaged FamQuiz.
+5. **Building (11.3) stops with red errors** → almost always one of the two files from 11.2 has a wrong name or a missing line, or 11.1 never said `Successfully installed`. Redo 11.1–11.2 exactly.
+6. **Players say the links stopped working after the switch** → the exe serves on the same `0.0.0.0:5000` as `python app.py`; nothing about Sections 5A/5B changes. Only one copy of FamQuiz may run at a time.
+
+### 11.9 Put the two files in git (for builders)
+
+`run_famquiz.py` and `FamQuiz.spec` are **source files** — commit them so any helper can rebuild. The default Python `.gitignore` used to hide recipes (the `*.spec` line); on this project that line is already removed. If your copy still has it, delete it or add `!FamQuiz.spec` after it. `build/`, `dist/` and the built program file itself stay ignored — never commit the exe, and never commit `.env` (Section 6: secrets).

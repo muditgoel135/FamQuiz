@@ -22,7 +22,8 @@ DELIVERED_STATUSES = {"sent", "opened", "clicked"}
 
 
 def _sender_address(flask_app):
-    """Return the sender address as the live-mail recipient.
+    """
+    Return the sender address as the live-mail recipient.
 
     Recipient = sender, so the test tracks whatever .env configures.
 
@@ -30,13 +31,15 @@ def _sender_address(flask_app):
     :return: The sender email address.
     :rtype: str
     """
+
     _, address = parseaddr(flask_app.config.get("MAIL_DEFAULT_SENDER", ""))
     assert address and "@" in address, "MAIL_DEFAULT_SENDER not configured"
     return address
 
 
 def _mailjet_status(api_key, secret, recipient, sent_after, timeout=120):
-    """Poll Mailjet's Messages API until our message shows up.
+    """
+    Poll Mailjet's Messages API until our message shows up.
 
     :param api_key: The Mailjet API key.
     :param secret: The Mailjet API secret.
@@ -46,6 +49,7 @@ def _mailjet_status(api_key, secret, recipient, sent_after, timeout=120):
     :return: Tuple (ok, detail); ok=True only if Mailjet reports a delivered status.
     :rtype: tuple
     """
+
     token = base64.b64encode(f"{api_key}:{secret}".encode()).decode()
     deadline = time.time() + timeout
     last_detail = "no messages returned yet"
@@ -75,12 +79,14 @@ def _mailjet_status(api_key, secret, recipient, sent_after, timeout=120):
 
 
 def _arrived_at(message):
-    """Parse a Mailjet message ArrivedAt to UTC datetime.
+    """
+    Parse a Mailjet message ArrivedAt to UTC datetime.
 
     :param message: The message fixture.
     :return: Helper value for tests.
     :rtype: object
     """
+
     try:
         return datetime.fromisoformat(
             message.get("ArrivedAt", "").replace("Z", "+00:00")
@@ -90,10 +96,12 @@ def _arrived_at(message):
 
 
 def test_forgot_password_sends_real_email_to_user(tmp_path):
-    """Verify forgot password sends real email to user.
+    """
+    Verify forgot password sends real email to user.
 
     :param tmp_path: The tmp_path fixture.
     """
+
     # Check both canonical and legacy dash-names (.env uses SMTP-SERVER etc).
     has_server = bool(os.getenv("MAIL_SERVER") or os.getenv("SMTP-SERVER"))
     has_pass = bool(os.getenv("MAIL_PASSWORD"))

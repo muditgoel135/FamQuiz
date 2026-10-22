@@ -88,9 +88,7 @@ class TestRefreshDirect:
         from routes import _refresh_game_status
 
         now = time.time()
-        gid = self._new(
-            app, status="lobby", starts_at=now - 1, expires_at=now + 1000
-        )
+        gid = self._new(app, status="lobby", starts_at=now - 1, expires_at=now + 1000)
         with app.app_context():
             game = db.session.get(GameSession, gid)
             assert _refresh_game_status(game).status == "active"
@@ -100,9 +98,7 @@ class TestRefreshDirect:
         from routes import _refresh_game_status
 
         now = time.time()
-        gid = self._new(
-            app, status="lobby", starts_at=now + 100, expires_at=now + 1000
-        )
+        gid = self._new(app, status="lobby", starts_at=now + 100, expires_at=now + 1000)
         with app.app_context():
             game = db.session.get(GameSession, gid)
             assert _refresh_game_status(game).status == "lobby"
@@ -123,9 +119,7 @@ class TestRefreshDirect:
         from routes import _refresh_game_status
 
         now = time.time()
-        gid = self._new(
-            app, status="active", starts_at=now - 1000, expires_at=now - 1
-        )
+        gid = self._new(app, status="active", starts_at=now - 1000, expires_at=now - 1)
         with app.app_context():
             game = db.session.get(GameSession, gid)
             assert _refresh_game_status(game).status == "finished"
@@ -165,9 +159,7 @@ class TestRefreshDirect:
         # is only reachable in-memory. Verify the sweeper tolerates a
         # transient bad row mixed with a real one without raising.
         now = time.time()
-        gid = self._new(
-            app, status="lobby", starts_at=now + 100, expires_at=now + 1000
-        )
+        gid = self._new(app, status="lobby", starts_at=now + 100, expires_at=now + 1000)
         transient = GameSession(status="lobby")
         transient.starts_at = "bad"
         transient.expires_at = "bad"
@@ -223,21 +215,33 @@ class TestStartMatrix:
 
     def test_string_coercion(self, client, existing_user):
         _login(client, existing_user)
-        assert client.post(
-            "/api/game/start", json={"num_questions": "5"}
-        ).get_json()["game"]["num_questions"] == 5
+        assert (
+            client.post("/api/game/start", json={"num_questions": "5"}).get_json()[
+                "game"
+            ]["num_questions"]
+            == 5
+        )
         client.post("/api/game/cancel")
-        assert client.post(
-            "/api/game/start", json={"num_questions": "abc"}
-        ).get_json()["game"]["num_questions"] == 10
+        assert (
+            client.post("/api/game/start", json={"num_questions": "abc"}).get_json()[
+                "game"
+            ]["num_questions"]
+            == 10
+        )
         client.post("/api/game/cancel")
-        assert client.post(
-            "/api/game/start", json={"num_questions": ""}
-        ).get_json()["game"]["num_questions"] == 10
+        assert (
+            client.post("/api/game/start", json={"num_questions": ""}).get_json()[
+                "game"
+            ]["num_questions"]
+            == 10
+        )
         client.post("/api/game/cancel")
-        assert client.post(
-            "/api/game/start", json={"num_questions": None}
-        ).get_json()["game"]["num_questions"] == 10
+        assert (
+            client.post("/api/game/start", json={"num_questions": None}).get_json()[
+                "game"
+            ]["num_questions"]
+            == 10
+        )
         client.post("/api/game/cancel")
 
     def test_user_default(self, client, app, existing_user):
@@ -248,54 +252,77 @@ class TestStartMatrix:
             user.default_num_questions = 7
             db.session.commit()
         _login(client, existing_user)
-        assert client.post("/api/game/start", json={}).get_json()["game"][
-            "num_questions"
-        ] == 7
+        assert (
+            client.post("/api/game/start", json={}).get_json()["game"]["num_questions"]
+            == 7
+        )
 
     def test_neg_zero(self, client, existing_user):
         _login(client, existing_user)
-        assert client.post(
-            "/api/game/start", json={"num_questions": -5}
-        ).get_json()["game"]["num_questions"] == 1
+        assert (
+            client.post("/api/game/start", json={"num_questions": -5}).get_json()[
+                "game"
+            ]["num_questions"]
+            == 1
+        )
         client.post("/api/game/cancel")
-        assert client.post(
-            "/api/game/start", json={"num_questions": 0}
-        ).get_json()["game"]["num_questions"] == 10
+        assert (
+            client.post("/api/game/start", json={"num_questions": 0}).get_json()[
+                "game"
+            ]["num_questions"]
+            == 10
+        )
 
     def test_difficulty(self, client, app, existing_user):
         from app import User
 
         _login(client, existing_user)
-        assert client.post(
-            "/api/game/start", json={"difficulty": "  EASY  "}
-        ).get_json()["game"]["difficulty"] == "easy"
+        assert (
+            client.post("/api/game/start", json={"difficulty": "  EASY  "}).get_json()[
+                "game"
+            ]["difficulty"]
+            == "easy"
+        )
         client.post("/api/game/cancel")
-        assert client.post(
-            "/api/game/start", json={"difficulty": "nope"}
-        ).get_json()["game"]["difficulty"] == "medium"
+        assert (
+            client.post("/api/game/start", json={"difficulty": "nope"}).get_json()[
+                "game"
+            ]["difficulty"]
+            == "medium"
+        )
         client.post("/api/game/cancel")
-        assert client.post(
-            "/api/game/start", json={"difficulty": 123}
-        ).get_json()["game"]["difficulty"] == "medium"
+        assert (
+            client.post("/api/game/start", json={"difficulty": 123}).get_json()["game"][
+                "difficulty"
+            ]
+            == "medium"
+        )
         client.post("/api/game/cancel")
         with app.app_context():
             user = User.query.filter_by(email=existing_user["email"]).one()
             user.difficulty_level = "hard"
             db.session.commit()
-        assert client.post("/api/game/start", json={}).get_json()["game"][
-            "difficulty"
-        ] == "hard"
+        assert (
+            client.post("/api/game/start", json={}).get_json()["game"]["difficulty"]
+            == "hard"
+        )
 
     def test_powerups(self, client, existing_user):
         _login(client, existing_user)
         for val in ("yes", 0, None):
-            assert client.post(
-                "/api/game/start", json={"powerups_enabled": val}
-            ).get_json()["game"]["powerups_enabled"] is True
+            assert (
+                client.post(
+                    "/api/game/start", json={"powerups_enabled": val}
+                ).get_json()["game"]["powerups_enabled"]
+                is True
+            )
             client.post("/api/game/cancel")
-        assert client.post(
-            "/api/game/start", json={"powerups_enabled": False}
-        ).get_json()["game"]["powerups_enabled"] is False
+        assert (
+            client.post("/api/game/start", json={"powerups_enabled": False}).get_json()[
+                "game"
+            ]["powerups_enabled"]
+            is False
+        )
 
     def test_lobby_seconds(self, client, existing_user):
         _login(client, existing_user)
@@ -312,9 +339,10 @@ class TestStartMatrix:
             resp = client.post("/api/game/start", json={"lobby_seconds": raw})
             assert resp.get_json()["game"]["lobby_seconds"] == expected, raw
             client.post("/api/game/cancel")
-        assert client.post("/api/game/start", json={}).get_json()["game"][
-            "lobby_seconds"
-        ] == 300
+        assert (
+            client.post("/api/game/start", json={}).get_json()["game"]["lobby_seconds"]
+            == 300
+        )
 
     def test_second_when_active(self, client, app, existing_user):
         _login(client, existing_user)
@@ -351,9 +379,18 @@ class TestGameDict:
         )
         game = client.get("/api/game/status").get_json()["active_game"]
         assert set(game) == {
-            "id", "status", "starts_in_ms", "starts_at", "expires_at",
-            "num_questions", "difficulty", "powerups_enabled", "lobby_seconds",
-            "join_url", "you_left", "is_starter",
+            "id",
+            "status",
+            "starts_in_ms",
+            "starts_at",
+            "expires_at",
+            "num_questions",
+            "difficulty",
+            "powerups_enabled",
+            "lobby_seconds",
+            "join_url",
+            "you_left",
+            "is_starter",
         }
         assert game["join_url"] == "/gameplay"
         assert game["difficulty"] == "hard"
@@ -372,32 +409,36 @@ class TestGameDict:
     def test_you_left(self, client, existing_user):
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 60})
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "you_left"
-        ] is False
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["you_left"]
+            is False
+        )
         assert client.post("/api/quiz/quit").get_json()["left_game_id"] is not None
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "you_left"
-        ] is True
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["you_left"] is True
+        )
         assert client.post("/api/game/join").status_code == 200
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "you_left"
-        ] is False
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["you_left"]
+            is False
+        )
 
     def test_is_starter(self, client, app, existing_user):
         _login(client, existing_user)
         client.post("/api/game/start", json={})
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "is_starter"
-        ] is True
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["is_starter"]
+            is True
+        )
         other = _second(app)
         second = app.test_client()
         second.post(
             "/login", data={"email": other["email"], "password": other["password"]}
         )
-        assert second.get("/api/game/status").get_json()["active_game"][
-            "is_starter"
-        ] is False
+        assert (
+            second.get("/api/game/status").get_json()["active_game"]["is_starter"]
+            is False
+        )
 
 
 class TestQuitDelete:
@@ -426,9 +467,9 @@ class TestQuitDelete:
         body = client.post("/api/quiz/quit").get_json()
         assert body["ok"] is True
         assert body["left_game_id"] is not None
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "you_left"
-        ] is True
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["you_left"] is True
+        )
         assert client.get("/api/quiz/state").status_code == 404
 
     def test_quit_clears_stale_left(self, client, existing_user):
@@ -464,9 +505,10 @@ class TestQuitDelete:
             "/login", data={"email": other["email"], "password": other["password"]}
         )
         assert second.delete("/api/account").get_json() == {"ok": True}
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "status"
-        ] == "lobby"
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["status"]
+            == "lobby"
+        )
 
     def test_erase_not_cancel(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
@@ -474,9 +516,10 @@ class TestQuitDelete:
         client.post("/api/quiz/generate", json={"num_questions": 1})
         client.post("/api/game/start", json={"lobby_seconds": 60})
         assert client.post("/api/account/erase-data").get_json() == {"ok": True}
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "status"
-        ] == "lobby"
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["status"]
+            == "lobby"
+        )
         assert client.get("/api/quiz/state").status_code == 404
 
 
@@ -506,9 +549,10 @@ class TestJoinCancel:
         client.post("/api/quiz/quit")
         body = client.post("/api/game/join").get_json()
         assert body["game"]["status"] == "active"
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "you_left"
-        ] is False
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["you_left"]
+            is False
+        )
 
     def test_cancel_active_shape(self, client, app, existing_user):
         _login(client, existing_user)
@@ -549,16 +593,18 @@ class TestJoinCancel:
         resp = second.post("/api/game/cancel")
         assert resp.status_code == 403
         assert "Only the starter" in resp.get_json()["error"]
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "status"
-        ] == "active"
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["status"]
+            == "active"
+        )
 
     def test_status_after_cancel_expiry(self, client, app, existing_user):
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 60})
-        assert client.get("/api/game/status").get_json()["active_game"][
-            "status"
-        ] == "lobby"
+        assert (
+            client.get("/api/game/status").get_json()["active_game"]["status"]
+            == "lobby"
+        )
         client.post("/api/game/cancel")
         assert client.get("/api/game/status").get_json() == {"active_game": None}
         client.post("/api/game/start", json={"lobby_seconds": 60})

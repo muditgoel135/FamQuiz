@@ -21,8 +21,11 @@ def _make_user(app, email, **kw):
     from flask_security.utils import hash_password
     from app import User, user_datastore
 
-    aliases = {"best": "best_score", "wins": "total_wins",
-               "played": "total_games_played"}
+    aliases = {
+        "best": "best_score",
+        "wins": "total_wins",
+        "played": "total_games_played",
+    }
     with app.app_context():
         user_datastore.create_user(email=email, password=hash_password("x" * 12))
         user = User.query.filter_by(email=email).one()
@@ -83,13 +86,21 @@ def _force(client, kind):
 def _inject_finished(client, score, counts=None):
     with client.session_transaction() as sess:
         sess["quiz"] = {
-            "questions": [{"question": "Q?", "options": ["A", "B", "C", "D"],
-                           "answer_index": 0}],
-            "index": 1, "score": score, "started_at": None,
-            "limit_ms": 30000, "powerups_enabled": True,
-            "difficulty": "medium", "offered": None, "powerup_used": False,
-            "powerup_counts": counts or {}, "double_armed": False,
-            "finished": True, "game_id": None,
+            "questions": [
+                {"question": "Q?", "options": ["A", "B", "C", "D"], "answer_index": 0}
+            ],
+            "index": 1,
+            "score": score,
+            "started_at": None,
+            "limit_ms": 30000,
+            "powerups_enabled": True,
+            "difficulty": "medium",
+            "offered": None,
+            "powerup_used": False,
+            "powerup_counts": counts or {},
+            "double_armed": False,
+            "finished": True,
+            "game_id": None,
         }
         sess.modified = True
 
@@ -104,25 +115,40 @@ class TestPortBoundaries:
         with app.test_request_context("/", headers={"Host": "example.com:65535"}):
             assert _serving_port() == 65535
         monkeypatch.setenv("PORT", "8765")
-        for host in ("example.com:0", "example.com:65536", "example.com:99999",
-                     "example.com:", "example.com:notaport"):
+        for host in (
+            "example.com:0",
+            "example.com:65536",
+            "example.com:99999",
+            "example.com:",
+            "example.com:notaport",
+        ):
             with app.test_request_context("/", headers={"Host": host}):
                 assert _serving_port() == 8765
 
     def test_env_edges(self, app, monkeypatch):
         from routes import _serving_port
 
-        for val, expected in [("1", 1), ("65535", 65535), ("0", 5000),
-                              ("70000", 5000), ("abc", 5000), ("", 5000)]:
+        for val, expected in [
+            ("1", 1),
+            ("65535", 65535),
+            ("0", 5000),
+            ("70000", 5000),
+            ("abc", 5000),
+            ("", 5000),
+        ]:
             monkeypatch.setenv("PORT", val)
             with app.test_request_context("/", base_url="http://example.com/"):
                 assert _serving_port() == expected, val
 
     def test_guide_renders(self, client):
-        assert "<code>:1</code>" in client.get(
-            "/guide", headers={"Host": "h:1"}).data.decode()
-        assert "<code>:65535</code>" in client.get(
-            "/guide", headers={"Host": "h:65535"}).data.decode()
+        assert (
+            "<code>:1</code>"
+            in client.get("/guide", headers={"Host": "h:1"}).data.decode()
+        )
+        assert (
+            "<code>:65535</code>"
+            in client.get("/guide", headers={"Host": "h:65535"}).data.decode()
+        )
 
 
 class TestInjectThemeResidual:
@@ -166,12 +192,13 @@ class TestInjectThemeResidual:
 
 class TestStatusDotMatrix:
     def test_homepage(self, client, app):
-        _make_user(app, "s1@example.com", best=900, status="Ready to play",
-                   display_name="S1")
-        _make_user(app, "s2@example.com", best=800, status="Do not disturb",
-                   display_name="S2")
-        _make_user(app, "s3@example.com", best=700, status="offline",
-                   display_name="S3")
+        _make_user(
+            app, "s1@example.com", best=900, status="Ready to play", display_name="S1"
+        )
+        _make_user(
+            app, "s2@example.com", best=800, status="Do not disturb", display_name="S2"
+        )
+        _make_user(app, "s3@example.com", best=700, status="offline", display_name="S3")
         html = client.get("/").data.decode()
         assert "home-dot-ready" in html
         assert "home-dot-busy" in html
@@ -186,8 +213,7 @@ class TestStatusDotMatrix:
         assert "Ready to play" in html
 
     def test_whitespace_offline(self, client, app):
-        _make_user(app, "w1@example.com", best=9999, status="   ",
-                   display_name="W1")
+        _make_user(app, "w1@example.com", best=9999, status="   ", display_name="W1")
         assert "home-dot-offline" in client.get("/").data.decode()
 
 
@@ -377,33 +403,48 @@ class TestGenerateResidual:
         fake = _FakeClient(_quiz_json(7))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        assert client.post(
-            "/api/quiz/generate", json={"num_questions": None}
-        ).get_json()["total"] == 7
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": None}).get_json()[
+                "total"
+            ]
+            == 7
+        )
 
     def test_num_string_minus5(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         fake = _FakeClient(_quiz_json(5))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        assert client.post(
-            "/api/quiz/generate", json={"num_questions": "-5"}
-        ).get_json()["total"] == 1
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": "-5"}).get_json()[
+                "total"
+            ]
+            == 1
+        )
 
     def test_boundaries(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         fake = _FakeClient(_quiz_json(25))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        assert client.post(
-            "/api/quiz/generate", json={"num_questions": 1}
-        ).get_json()["total"] == 1
-        assert client.post(
-            "/api/quiz/generate", json={"num_questions": 20}
-        ).get_json()["total"] == 20
-        assert client.post(
-            "/api/quiz/generate", json={"num_questions": 21}
-        ).get_json()["total"] == 20
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 1}).get_json()[
+                "total"
+            ]
+            == 1
+        )
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 20}).get_json()[
+                "total"
+            ]
+            == 20
+        )
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 21}).get_json()[
+                "total"
+            ]
+            == 20
+        )
 
     def test_difficulty_empty(self, client, app, existing_user, monkeypatch):
         from app import User
@@ -422,7 +463,9 @@ class TestGenerateResidual:
         client.post("/api/quiz/generate", json={"num_questions": 1, "difficulty": ""})
         with client.session_transaction() as sess:
             assert sess["quiz"]["difficulty"] == "hard"
-        client.post("/api/quiz/generate", json={"num_questions": 1, "difficulty": "   "})
+        client.post(
+            "/api/quiz/generate", json={"num_questions": 1, "difficulty": "   "}
+        )
         with client.session_transaction() as sess:
             assert sess["quiz"]["difficulty"] == "medium"
 
@@ -442,9 +485,10 @@ class TestGenerateResidual:
         fake = _FakeClient(_quiz_json(1))
         monkeypatch.setattr(app_module, "OLLAMA_API_KEY", "test-key")
         monkeypatch.setattr(app_module, "get_ollama_client", lambda: fake)
-        assert client.post(
-            "/api/quiz/generate", json={"num_questions": 1}
-        ).status_code == 200
+        assert (
+            client.post("/api/quiz/generate", json={"num_questions": 1}).status_code
+            == 200
+        )
 
 
 class TestStateExact:
@@ -528,9 +572,15 @@ class TestAnswerExact:
         assert resp.status_code == 409
         assert resp.get_json() == {"error": "Timer not started. Reload the question."}
 
-    @pytest.mark.parametrize("payload", [{}, {"option_index": 0},
-                                         {"option_index": True, "question_index": 0},
-                                         {"option_index": 0, "question_index": 5}])
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {},
+            {"option_index": 0},
+            {"option_index": True, "question_index": 0},
+            {"option_index": 0, "question_index": 5},
+        ],
+    )
     def test_stale_invalid(self, client, existing_user, monkeypatch, payload):
         _login(client, existing_user)
         _start(client, monkeypatch, n=2)
@@ -574,9 +624,12 @@ class TestAnswerExact:
             sess["quiz"]["limit_ms"] = None
             sess.modified = True
         _ago(client, 1)
-        assert client.post(
-            "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
-        ).status_code == 200
+        assert (
+            client.post(
+                "/api/quiz/answer", json={"option_index": 0, "question_index": 0}
+            ).status_code
+            == 200
+        )
 
 
 class TestPowerupExact:
@@ -667,9 +720,9 @@ class TestPowerupExact:
         _start(client, monkeypatch, n=1)
         client.get("/api/quiz/state")
         _force(client, "double")
-        assert client.post(
-            "/api/quiz/powerup", json={"kind": "double"}
-        ).get_json() == {"kind": "double"}
+        assert client.post("/api/quiz/powerup", json={"kind": "double"}).get_json() == {
+            "kind": "double"
+        }
 
 
 class TestFinishExact:
@@ -758,5 +811,10 @@ class TestFinishExact:
         _ago(client, 1)
         client.post("/api/quiz/answer", json={"option_index": 0, "question_index": 0})
         body = client.post("/api/quiz/finish").get_json()
-        assert set(body) == {"quiz_score", "total", "best_score", "is_win",
-                             "powerups_used"}
+        assert set(body) == {
+            "quiz_score",
+            "total",
+            "best_score",
+            "is_win",
+            "powerups_used",
+        }
