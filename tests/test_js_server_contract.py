@@ -1,4 +1,5 @@
-"""Contract tests between the browser JavaScript and the server.
+"""
+Contract tests between the browser JavaScript and the server.
 
 There is no JavaScript runtime in this project, so the client is checked
 by *contract*: every endpoint it calls must exist, every i18n key it
@@ -8,7 +9,6 @@ must actually be produced by the server.
 Without this, renaming a route or a response key breaks the game at
 runtime and no test notices.
 """
-
 
 import json
 import os
@@ -34,7 +34,9 @@ I18N_GAME_KEY = re.compile(r"window\.I18N_GAME\.([A-Za-z_$][A-Za-z0-9_$]*)")
 NOTIFIER_KEY = re.compile(r"""\bt\(\s*['"]([A-Za-z_$][A-Za-z0-9_$]*)['"]""")
 FETCH_URL = re.compile(r"""fetch\(\s*['"]([^'"]+)['"]""")
 URL_FOR = re.compile(r"url_for\(\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]")
-URL_FOR_SECURITY = re.compile(r"url_for_security\(\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]")
+URL_FOR_SECURITY = re.compile(
+    r"url_for_security\(\s*['\"]([A-Za-z_][A-Za-z0-9_]*)['\"]"
+)
 OBJECT_KEY = re.compile(r"^\s*([A-Za-z_$][A-Za-z0-9_$]*)\s*:", re.MULTILINE)
 
 
@@ -206,7 +208,9 @@ class TestI18nKeys:
         defined = _defined_keys(html, "I18N_GAME")
         assert defined is not None
         unused = defined - used
-        assert unused <= unused_allowed, f"new unused notifier keys: {sorted(unused - unused_allowed)}"
+        assert (
+            unused <= unused_allowed
+        ), f"new unused notifier keys: {sorted(unused - unused_allowed)}"
         assert unused_allowed <= defined, "an allowed key disappeared from the template"
 
 
@@ -326,7 +330,14 @@ class TestApiResponseContract:
         client.post("/api/game/start", json={"lobby_seconds": 60})
         body = client.get("/api/game/status").get_json()
         game = body["active_game"]
-        for key in ("id", "status", "starts_at", "starts_in_ms", "you_left", "is_starter"):
+        for key in (
+            "id",
+            "status",
+            "starts_at",
+            "starts_in_ms",
+            "you_left",
+            "is_starter",
+        ):
             assert key in game, f"game status is missing '{key}'"
 
     def test_game_start_fields(self, client, existing_user):

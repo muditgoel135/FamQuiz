@@ -6,7 +6,6 @@ dependency could be dropped or an env var renamed without any test
 noticing.
 """
 
-
 import ast
 import configparser
 import logging
@@ -77,13 +76,56 @@ def _imports():
 
 # Standard-library modules that must never be listed as dependencies.
 STDLIB = {
-    "abc", "argparse", "ast", "base64", "collections", "configparser", "contextlib",
-    "copy", "csv", "dataclasses", "datetime", "email", "functools", "glob", "hashlib",
-    "http", "importlib", "inspect", "io", "itertools", "json", "logging", "mimetypes",
-    "os", "pathlib", "platform", "random", "re", "shutil", "socket", "sqlite3",
-    "stat", "string", "subprocess", "secrets", "sys", "tempfile", "textwrap", "threading",
-    "time", "types", "typing", "unicodedata", "unittest", "urllib", "uuid", "warnings",
-    "webbrowser", "xml", "zipfile",
+    "abc",
+    "argparse",
+    "ast",
+    "base64",
+    "collections",
+    "configparser",
+    "contextlib",
+    "copy",
+    "csv",
+    "dataclasses",
+    "datetime",
+    "email",
+    "functools",
+    "glob",
+    "hashlib",
+    "http",
+    "importlib",
+    "inspect",
+    "io",
+    "itertools",
+    "json",
+    "logging",
+    "mimetypes",
+    "os",
+    "pathlib",
+    "platform",
+    "random",
+    "re",
+    "shutil",
+    "socket",
+    "sqlite3",
+    "stat",
+    "string",
+    "subprocess",
+    "secrets",
+    "sys",
+    "tempfile",
+    "textwrap",
+    "threading",
+    "time",
+    "types",
+    "typing",
+    "unicodedata",
+    "unittest",
+    "urllib",
+    "uuid",
+    "warnings",
+    "webbrowser",
+    "xml",
+    "zipfile",
 }
 
 # The project's own modules.
@@ -179,7 +221,12 @@ class TestRequirements:
     def test_core_dependencies_are_present(self):
         """The app's own imports must be listed."""
         requirements = {name.lower() for name in _requirements()}
-        for expected in ("flask", "flask-mail", "flask-security-too", "flask-sqlalchemy"):
+        for expected in (
+            "flask",
+            "flask-mail",
+            "flask-security-too",
+            "flask-sqlalchemy",
+        ):
             assert expected in requirements
 
 
@@ -200,15 +247,16 @@ class TestEnvExample:
         missing = {
             name
             for name in canonical
-            if name not in documented
-            and name not in ("SQLALCHEMY_DATABASE_URI",)
+            if name not in documented and name not in ("SQLALCHEMY_DATABASE_URI",)
         }
         assert not missing, f"undocumented env vars: {sorted(missing)}"
 
     def test_legacy_aliases_are_documented(self):
         """The repo's own .env uses the dash-names, so the example must too."""
         source = _read("app.py")
-        pattern = re.compile(r"_env(?:_bool|_port)?\(\s*\"[A-Z0-9_\-]+\"\s*,\s*\"([A-Z0-9\-]+)\"")
+        pattern = re.compile(
+            r"_env(?:_bool|_port)?\(\s*\"[A-Z0-9_\-]+\"\s*,\s*\"([A-Z0-9\-]+)\""
+        )
         aliases = set(pattern.findall(source))
         documented = _env_example()
         missing = {name for name in aliases if name not in documented}
@@ -223,9 +271,7 @@ class TestEnvExample:
         known = set()
         for call in env_calls:
             known.update(re.findall(r"\"([A-Z0-9_\-]+)\"", call))
-        known.update(
-            re.findall(r"os\.getenv\(\s*\"([A-Z0-9_\-]+)\"", source)
-        )
+        known.update(re.findall(r"os\.getenv\(\s*\"([A-Z0-9_\-]+)\"", source))
         known |= {"SQLALCHEMY_DATABASE_URI", "SECRET_KEY", "SECURITY_PASSWORD_SALT"}
         # Flask CLI variables are read by Flask, not by the app.
         cli_only = {"FLASK_APP", "FLASK_RUN_HOST", "FLASK_RUN_PORT", "FLASK_DEBUG"}

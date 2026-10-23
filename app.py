@@ -1,7 +1,5 @@
 import json
 import os
-import random  # re-exported: tests patch app.random for quiz power-ups
-import time  # re-exported alongside random
 import sys as _sys
 
 if __name__ == "__main__":
@@ -12,6 +10,7 @@ if __name__ == "__main__":
     _sys.modules.setdefault("app", _sys.modules[__name__])
 
 from uuid import uuid4
+
 from dotenv import load_dotenv
 from flask import Flask, current_app, g, request, session
 from flask_mail import Mail
@@ -1026,7 +1025,9 @@ def rank_of(user_id):
     ordered_ids = [
         u.id
         for u in User.query.order_by(
-            User.best_score.desc(), User.total_wins.desc(), User.id.asc()  # type: ignore[attr-defined]
+            User.best_score.desc(),
+            User.total_wins.desc(),
+            User.id.asc(),  # type: ignore[attr-defined]
         ).all()
     ]
     return ordered_ids.index(user_id) + 1 if user_id in ordered_ids else 1

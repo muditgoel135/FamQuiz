@@ -435,9 +435,7 @@ class TestPublicStateResiduals:
 
     def test_missing_options_key(self, app):
         with app.test_request_context("/"), pytest.raises(KeyError):
-            app_module._public_state(
-                {"questions": [{"question": "Q?"}], "index": 0}
-            )
+            app_module._public_state({"questions": [{"question": "Q?"}], "index": 0})
 
 
 class TestGenerateResiduals:
@@ -668,7 +666,6 @@ class TestLanResiduals:
         assert ":5000" in capsys.readouterr().out
 
     def test_tailscale_multi_first(self, monkeypatch, capsys):
-
         self._sock(monkeypatch)
 
         class _R:

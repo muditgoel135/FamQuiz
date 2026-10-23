@@ -10,7 +10,6 @@ The build invariants matter: a frozen exe that forgets
 ``templates/`` shows a blank page.
 """
 
-
 import ast
 import os
 import subprocess
@@ -382,9 +381,7 @@ class TestDefaultEnvCreation:
         assert "{SECRET_KEY}" not in text
         assert "{PASSWORD_SALT}" not in text
         secret_line = next(
-            line
-            for line in text.splitlines()
-            if line.startswith("SECRET_KEY=")
+            line for line in text.splitlines() if line.startswith("SECRET_KEY=")
         )
         assert len(secret_line.split("=", 1)[1]) >= 32
         # Boot defaults that the funnel depends on.

@@ -27,9 +27,7 @@ def _token(app, email):
     from app import User
 
     with app.app_context():
-        return generate_reset_password_token(
-            User.query.filter_by(email=email).one()
-        )
+        return generate_reset_password_token(User.query.filter_by(email=email).one())
 
 
 class TestSrcIndexJsStrict:
@@ -110,13 +108,13 @@ class TestSrcGameplayJsStrict:
 
     def test_endash(self):
         assert "Question –/–" in self.SRC  # U+2013 en-dash
-        assert '"—"' in self.SRC or "textContent = \"—\"" in self.SRC
+        assert '"—"' in self.SRC or 'textContent = "—"' in self.SRC
         assert '"You left this game"' in self.SRC
 
     def test_quit_full(self):
         start = self.SRC.find('getElementById("game-quit")')
         assert start != -1
-        assert "quitBtn.disabled = true" in self.SRC[start:start + 900]
+        assert "quitBtn.disabled = true" in self.SRC[start : start + 900]
         assert 'method: "POST"' in self.SRC
         assert "quiz_quit" in self.SRC
         assert self.SRC.count('window.location.href = "{{ url_for(') >= 2
@@ -212,9 +210,11 @@ class TestSrcCssStrict:
         cls.CSS = _read("static/styles.css")
 
     def test_focus(self):
-        for sel in (".game-option:focus-visible",
-                    ".game-powerups button:focus-visible",
-                    ".settings-btn:focus-visible"):
+        for sel in (
+            ".game-option:focus-visible",
+            ".game-powerups button:focus-visible",
+            ".settings-btn:focus-visible",
+        ):
             assert sel in self.CSS, sel
         assert "outline: 3px solid #0b2a4a" in self.CSS
 
@@ -267,9 +267,12 @@ class TestIndexAnonResidual:
 
 class TestAuthFormsAnon:
     @pytest.mark.parametrize(
-        "path,form", [("/login", "login_user_form"),
-                      ("/register", "register_user_form"),
-                      ("/reset", "forgot_password_form")],
+        "path,form",
+        [
+            ("/login", "login_user_form"),
+            ("/register", "register_user_form"),
+            ("/reset", "forgot_password_form"),
+        ],
     )
     def test_wiring(self, client, path, form):
         html = client.get(path).data.decode()
@@ -288,8 +291,11 @@ class TestAuthFormsAnon:
         assert "Back to log in" in html
 
     def test_flash_source(self):
-        for name in ("forgot_password.html", "reset_password.html",
-                     "change_password.html"):
+        for name in (
+            "forgot_password.html",
+            "reset_password.html",
+            "change_password.html",
+        ):
             src = _read(f"templates/{name}")
             assert "get_flashed_messages" in src
             assert "alert alert-info" in src
@@ -309,7 +315,8 @@ class TestGuideLeaderboardAnon:
 
         with app.app_context():
             user_datastore.create_user(
-                email="l1@example.com", password=hash_password("x" * 12))
+                email="l1@example.com", password=hash_password("x" * 12)
+            )
             from app import User
 
             user = User.query.filter_by(email="l1@example.com").one()
@@ -442,8 +449,7 @@ class TestSettingsRenderStrict:
         _login(client, existing_user)
         client.post(
             "/api/settings/save",
-            json={"language": "Hindi", "game_reminders": False,
-                  "theme_mode": "dark"},
+            json={"language": "Hindi", "game_reminders": False, "theme_mode": "dark"},
         )
         html = client.get("/settings").data.decode()
         assert "checked" in html
@@ -465,9 +471,19 @@ class TestNotifyAuthedStrict:
         for path in ("/", "/gameplay", "/settings"):
             html = client.get(path).data.decode()
             assert "window.I18N_GAME" in html, path
-            for key in ("startingIn", "waiting", "live", "cancelled",
-                        "waitingTapJoin", "remindersOff", "dndNote", "join",
-                        "dismiss", "leftNote", "rejoin"):
+            for key in (
+                "startingIn",
+                "waiting",
+                "live",
+                "cancelled",
+                "waitingTapJoin",
+                "remindersOff",
+                "dndNote",
+                "join",
+                "dismiss",
+                "leftNote",
+                "rejoin",
+            ):
                 assert key in html, (path, key)
 
     def test_es_values(self, client):
@@ -508,8 +524,9 @@ class TestTranslationsStrict:
         for root, _d, files in os.walk(os.path.join(ROOT, "templates")):
             for name in files:
                 if name.endswith((".html", ".txt")):
-                    combined += open(os.path.join(root, name),
-                                     encoding="utf-8", errors="ignore").read()
+                    combined += open(
+                        os.path.join(root, name), encoding="utf-8", errors="ignore"
+                    ).read()
         assert "Welcome Back!" not in combined  # documents orphan key
         assert "Welcome!" in combined
 
@@ -555,7 +572,8 @@ class TestMailParityStrict:
         for name in ("reset_instructions.txt", "reset_instructions.html"):
             assert "within" in _read(f"templates/security/email/{name}")
         assert '<a href="{{ reset_link }}">' in _read(
-            "templates/security/email/reset_instructions.html")
+            "templates/security/email/reset_instructions.html"
+        )
 
     def test_hi_subjects(self, client, app, existing_user):
         from app import User, db, mail

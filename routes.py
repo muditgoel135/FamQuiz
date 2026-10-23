@@ -219,7 +219,9 @@ def homepage():
 
     top_users = (
         User.query.order_by(
-            User.best_score.desc(), User.total_wins.desc(), User.id.asc()  # type: ignore[attr-defined]
+            User.best_score.desc(),
+            User.total_wins.desc(),
+            User.id.asc(),  # type: ignore[attr-defined]
         )
         .limit(3)
         .all()
@@ -662,7 +664,9 @@ def leaderboard():
         return "offline"
 
     users = User.query.order_by(
-        User.best_score.desc(), User.total_wins.desc(), User.id.asc()  # type: ignore[attr-defined]
+        User.best_score.desc(),
+        User.total_wins.desc(),
+        User.id.asc(),  # type: ignore[attr-defined]
     ).all()
     current_id = current_user.id if current_user.is_authenticated else None
     board = []
@@ -1304,9 +1308,7 @@ def game_start():
     raw_num = payload.get("num_questions")
     if raw_num is None:
         raw_num = getattr(current_user, "default_num_questions", None)
-    if raw_num is None or raw_num == "" or raw_num == 0:
-        num = 10
-    elif isinstance(raw_num, bool):
+    if raw_num is None or raw_num == "" or raw_num == 0 or isinstance(raw_num, bool):
         num = 10
     else:
         try:

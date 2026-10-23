@@ -1,10 +1,14 @@
 """Tests for the settings page (3-card layout + save/erase/delete APIs)."""
 
-
 import pytest
 
 from app import MAX_QUIZ_QUESTIONS, GameSession, User, db
-from routes import SETTINGS_GRADES, SETTINGS_LANGUAGES, SETTINGS_STATUSES, SETTINGS_THEMES
+from routes import (
+    SETTINGS_GRADES,
+    SETTINGS_LANGUAGES,
+    SETTINGS_STATUSES,
+    SETTINGS_THEMES,
+)
 
 
 def _login(client, existing_user):
@@ -513,7 +517,9 @@ class TestFieldErrors:
         """Only easy, medium and hard are difficulties."""
         _login(client, existing_user)
         body = _save(client, {"difficulty_level": "extreme"}).get_json()
-        assert body["fields"]["difficulty_level"] == "must be one of: easy, medium, hard"
+        assert (
+            body["fields"]["difficulty_level"] == "must be one of: easy, medium, hard"
+        )
 
     @pytest.mark.parametrize("value", [True, False, 5.5, "abc", None])
     def test_bad_question_count(self, client, existing_user, value):
@@ -536,7 +542,9 @@ class TestFieldErrors:
     def test_question_count_out_of_range(self, client, existing_user):
         """The count is bounded by the model maximum."""
         _login(client, existing_user)
-        body = _save(client, {"default_num_questions": MAX_QUIZ_QUESTIONS + 1}).get_json()
+        body = _save(
+            client, {"default_num_questions": MAX_QUIZ_QUESTIONS + 1}
+        ).get_json()
         assert body["fields"]["default_num_questions"] == (
             f"must be between 1 and {MAX_QUIZ_QUESTIONS}"
         )
@@ -572,7 +580,9 @@ class TestFieldErrors:
             "status",
         }
 
-    def test_nothing_is_written_when_a_field_is_invalid(self, client, app, existing_user):
+    def test_nothing_is_written_when_a_field_is_invalid(
+        self, client, app, existing_user
+    ):
         """A rejected save must not apply the valid half of the payload."""
         _login(client, existing_user)
         _save(client, {"display_name": "Good Name", "theme_mode": "neon"})

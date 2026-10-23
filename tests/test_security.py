@@ -1,6 +1,5 @@
 """Security tests: CSRF matrix, methods, sessions, hashes, XSS, redirects."""
 
-
 import re
 
 import pytest
@@ -559,7 +558,9 @@ class TestJsonApiEscaping:
 @pytest.mark.parametrize(
     "page", ["/", "/leaderboard", "/settings", "/gameplay", "/guide"]
 )
-def test_pages_never_contain_a_raw_script_tag_from_data(client, app, existing_user, page):
+def test_pages_never_contain_a_raw_script_tag_from_data(
+    client, app, existing_user, page
+):
     """A sweep over the main pages for injected markup."""
     _login(client, existing_user)
     _set_profile(app, existing_user, display_name=XSS, nickname=XSS)

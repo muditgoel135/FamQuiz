@@ -350,7 +350,6 @@ class TestGetOllamaClient:
             app_module.get_ollama_client()
 
     def test_success_args(self, monkeypatch):
-
         seen = {}
 
         class _Client:

@@ -1,6 +1,5 @@
 """Template, static-asset, notifier and translation-completeness tests."""
 
-
 import json
 import os
 import re
@@ -761,7 +760,7 @@ class TestGameNotifyTemplate:
     def test_dismiss_button_has_an_aria_label(self):
         """An icon-only button needs an accessible name."""
         source = _read("templates/game_notify.html")
-        assert 'aria-label="{{ _(\'Dismiss\') }}"' in source
+        assert "aria-label=\"{{ _('Dismiss') }}\"" in source
 
     def test_dot_is_decorative(self):
         """The pulsing dot carries no information."""
@@ -785,7 +784,9 @@ class TestAssetVersioning:
             html = client.get(path).get_data(as_text=True)
             assert "styles.css?v=" in html, f"{path} loads an unversioned stylesheet"
 
-    def test_stylesheet_version_is_the_same_everywhere(self, client, app, existing_user):
+    def test_stylesheet_version_is_the_same_everywhere(
+        self, client, app, existing_user
+    ):
         """One asset version for the whole app."""
         _login(client, existing_user)
         versions = set()

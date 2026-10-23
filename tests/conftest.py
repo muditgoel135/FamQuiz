@@ -1,4 +1,3 @@
-
 import pytest
 
 from app import create_app, db, user_datastore
@@ -303,7 +302,6 @@ def multiple_live_games(app):
 
 @pytest.fixture()
 def fake_game():
-
     from types import SimpleNamespace
 
     def _factory(status="lobby", expires_at=4_000_000_000.0, game_id=1):

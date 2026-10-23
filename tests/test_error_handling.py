@@ -1,6 +1,5 @@
 """Error handling: 500 hygiene, malformed JSON, oversized, unicode, frozen time."""
 
-
 import json
 import time
 from types import SimpleNamespace
@@ -386,9 +385,7 @@ class TestPowerupTamper:
                 sess["quiz"]["started_at"] = time.time()
             sess.modified = True
 
-    def test_non_dict_powerup_counts_409(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_non_dict_powerup_counts_409(self, client, existing_user, monkeypatch):
         """``powerup_counts`` must be a mapping."""
         _login(client, existing_user)
         self._arm(client, monkeypatch)
@@ -418,7 +415,9 @@ class TestPowerupTamper:
         _login(client, existing_user)
         self._arm(client, monkeypatch)
         _tamper(client, lambda quiz: quiz.update({"powerup_counts": {"mega": 1}}))
-        assert client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 200
+        assert (
+            client.post("/api/quiz/powerup", json={"kind": "double"}).status_code == 200
+        )
 
         _ago(client, 1)
         client.post("/api/quiz/answer", json={"option_index": 0, "question_index": 0})
@@ -426,9 +425,7 @@ class TestPowerupTamper:
         assert resp.status_code == 409
         assert resp.get_json() == CORRUPTED
 
-    def test_hint_powerup_without_options_409(
-        self, client, existing_user, monkeypatch
-    ):
+    def test_hint_powerup_without_options_409(self, client, existing_user, monkeypatch):
         """The hint power-up reads the options, so a broken question fails."""
         _login(client, existing_user)
         self._arm(client, monkeypatch, kind="hint")
@@ -606,9 +603,7 @@ class TestGameStartTamper:
     """``POST /api/game/start`` must coerce odd input safely."""
 
     @pytest.mark.parametrize("value", [0.0, 0, "", None])
-    def test_falsy_num_questions_falls_back(
-        self, client, existing_user, value
-    ):
+    def test_falsy_num_questions_falls_back(self, client, existing_user, value):
         """A falsy count falls back to the default of 10."""
         _login(client, existing_user)
         resp = client.post("/api/game/start", json={"num_questions": value})
@@ -644,9 +639,7 @@ class TestNonDictJsonBody:
         assert resp.get_json() == {"error": "Power-up not available."}
 
     @pytest.mark.parametrize("body", [[1, 2], "text", 42])
-    def test_settings_save_ignores_a_non_object_body(
-        self, client, existing_user, body
-    ):
+    def test_settings_save_ignores_a_non_object_body(self, client, existing_user, body):
         """The settings payload is empty, so the defaults are kept."""
         _login(client, existing_user)
         resp = client.post("/api/settings/save", json=body)

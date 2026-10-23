@@ -1,11 +1,11 @@
-"""Regression tests for the invariants the app must never break.
+"""
+Regression tests for the invariants the app must never break.
 
 Each test here corresponds to a defect that was found by auditing the
 suite: a hole in the tests let the defect ship. They are deliberately
 written from the outside (HTTP + database) so they keep working when
 the implementation changes.
 """
-
 
 import json
 import time
@@ -240,7 +240,9 @@ class TestNoDanglingReferences:
             assert game.created_by_id is None
             assert game.status == "cancelled"
 
-    def test_banked_quizzes_survive_the_user(self, client, app, existing_user, monkeypatch):
+    def test_banked_quizzes_survive_the_user(
+        self, client, app, existing_user, monkeypatch
+    ):
         """The ledger must not block the account deletion."""
         _login(client, existing_user)
         _start_quiz(client, monkeypatch, n=1)
@@ -249,7 +251,9 @@ class TestNoDanglingReferences:
         with app.app_context():
             assert FinishedQuiz.query.count() == 1
             assert FinishedQuiz.query.first().user_id is None
-            assert User.query.filter_by(email=existing_user["email"]).one_or_none() is None
+            assert (
+                User.query.filter_by(email=existing_user["email"]).one_or_none() is None
+            )
 
 
 class TestMailFailureIsSurvivable:
@@ -352,7 +356,10 @@ class TestStatusPollIsReadOnly:
     ):
         """A steady-state poll must not touch the database."""
         _login(client, existing_user)
-        assert client.post("/api/game/start", json={"lobby_seconds": 60}).status_code == 201
+        assert (
+            client.post("/api/game/start", json={"lobby_seconds": 60}).status_code
+            == 201
+        )
 
         commits = []
         original = db.session.commit
