@@ -21,6 +21,7 @@ def _login(client, existing_user):
 
 def _make_user(app, email, best=0, wins=0, played=0, **kw):
     from flask_security.utils import hash_password
+
     from app import db, user_datastore
 
     with app.app_context():
@@ -54,7 +55,7 @@ class TestHomepageAnon:
         assert "Start game" in html
 
     def test_empty_board(self, client, app):
-        from app import User, db
+        from app import User
 
         with app.app_context():
             assert User.query.count() == 0
@@ -284,7 +285,7 @@ class TestLeaderboardPage:
         assert "#4" in html  # full list, unlike homepage top-3
 
     def test_empty(self, client, app):
-        from app import User, db
+        from app import User
 
         with app.app_context():
             assert User.query.count() == 0

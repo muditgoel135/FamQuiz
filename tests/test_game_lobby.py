@@ -49,6 +49,7 @@ def _second_user(app):
     :rtype: dict
     """
     from flask_security.utils import hash_password
+
     from app import user_datastore
 
     with app.app_context():
@@ -359,7 +360,7 @@ class TestLobbyI18n:
 
         :param client: The client fixture.
         """
-        
+
         html = client.get("/guide").data.decode()
         assert "countdown" in html.lower() or "cuenta atr" in html.lower()
 
@@ -699,8 +700,9 @@ class TestGenerateGate:
         :param existing_user: The existing_user fixture.
         :param monkeypatch: The monkeypatch fixture.
         """
-        import app as app_module
         from types import SimpleNamespace
+
+        import app as app_module
 
         _login(client, existing_user)
         client.post("/api/game/start", json={"num_questions": 1, "lobby_seconds": 10})
@@ -767,8 +769,9 @@ class TestGenerateGate:
         :param existing_user: The existing_user fixture.
         :param monkeypatch: The monkeypatch fixture.
         """
-        import app as app_module
         from types import SimpleNamespace
+
+        import app as app_module
 
         _login(client, existing_user)
         assert "var hasQuiz = false" in client.get("/gameplay").data.decode()
@@ -809,8 +812,9 @@ class TestQuitLeave:
         :param existing_user: The existing_user fixture.
         :param monkeypatch: The monkeypatch fixture.
         """
-        import app as app_module
         from types import SimpleNamespace
+
+        import app as app_module
 
         _login(client, existing_user)
 
@@ -923,8 +927,9 @@ class TestCsrfContract:
         import re
         import tempfile
 
-        from app import create_app, db, user_datastore
         from flask_security.utils import hash_password
+
+        from app import create_app, db, user_datastore
 
         directory = tempfile.mkdtemp()
         csrf_app = create_app(

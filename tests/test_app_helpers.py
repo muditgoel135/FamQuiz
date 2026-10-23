@@ -350,7 +350,6 @@ class TestGetOllamaClient:
             app_module.get_ollama_client()
 
     def test_success_args(self, monkeypatch):
-        import types as _types
 
         seen = {}
 
@@ -1111,9 +1110,7 @@ class TestTranslatedMailUtil:
         with app.test_request_context("/"):
             # A broken SMTP account must not turn a password reset into
             # a 500 for the player, so the failure is swallowed...
-            assert (
-                self._util().send_mail("t", "s", "a@b.com", "x", "b", "h") is None
-            )
+            assert self._util().send_mail("t", "s", "a@b.com", "x", "b", "h") is None
             # ...and the locale is still restored.
             assert g.get("email_locale") is None
 
@@ -1180,6 +1177,7 @@ class TestDisplayName:
 class TestRankOf:
     def _make(self, app, email, best, wins=0):
         from flask_security.utils import hash_password
+
         from app import User, db, user_datastore
 
         with app.app_context():
@@ -1402,8 +1400,9 @@ class TestModels:
             assert game.expires_at == 2.0
 
     def test_assoc(self, app):
-        from app import Role, User, db, user_datastore
         from flask_security.utils import hash_password
+
+        from app import Role, User, db, user_datastore
 
         with app.app_context():
             role = Role(name="player", description="p")
@@ -1428,9 +1427,9 @@ class TestConstants:
             "Hindi": "hi",
             "Mandarin Chinese": "zh_Hans",
         }
-        assert app_module.LOCALE_TO_LANGUAGE == {
+        assert {
             v: k for k, v in app_module.LANGUAGE_TO_LOCALE.items()
-        }
+        } == app_module.LOCALE_TO_LANGUAGE
         assert app_module.LOCALE_TO_HTML["zh_Hans"] == "zh-Hans"
 
     def test_quiz_tuning(self):
@@ -1442,7 +1441,7 @@ class TestConstants:
         assert QUESTION_TIME_BONUS_MS == 15000
 
     def test_powerups(self):
-        assert POWERUP_CHANCE == pytest.approx(1 / 3)
+        assert pytest.approx(1 / 3) == POWERUP_CHANCE
         assert set(POWERUP_KINDS) == {"double", "fifty", "calc", "hint"}
         assert POWERUP_LABELS["double"] == "Double Points"
         assert len(POWERUP_LABELS) == 4

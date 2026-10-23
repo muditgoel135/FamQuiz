@@ -1,4 +1,3 @@
-import os
 
 import pytest
 
@@ -201,9 +200,7 @@ def frozen_time(monkeypatch):
     import routes as routes_module
 
     state = {"now": _time.time() + 3600.0}
-    monkeypatch.setattr(
-        routes_module.time, "time", lambda: state["now"]
-    )
+    monkeypatch.setattr(routes_module.time, "time", lambda: state["now"])
     return state
 
 

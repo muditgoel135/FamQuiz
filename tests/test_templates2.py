@@ -23,6 +23,7 @@ def _login(client, existing_user):
 
 def _token(app, email):
     from flask_security.recoverable import generate_reset_password_token
+
     from app import User
 
     with app.app_context():
@@ -303,6 +304,7 @@ class TestGuideLeaderboardAnon:
 
     def test_leaderboard(self, client, app):
         from flask_security.utils import hash_password
+
         from app import db, user_datastore
 
         with app.app_context():

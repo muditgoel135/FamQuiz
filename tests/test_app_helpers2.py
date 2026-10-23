@@ -109,7 +109,7 @@ class TestStripFencesResiduals:
         assert app_module.strip_code_fences("```json\n") == ""
 
     def test_int_passthrough(self):
-        assert app_module.strip_code_fences(123) is 123
+        assert app_module.strip_code_fences(123) == 123
         d = {}
         assert app_module.strip_code_fences(d) is d
 
@@ -314,8 +314,9 @@ class TestGetLocaleResiduals:
             ):
                 pass  # request proxy patch is unsafe; use args patch instead
         with app.test_request_context("/"):
-            from flask import request
             from unittest import mock
+
+            from flask import request
 
             with mock.patch.object(
                 request.args.__class__,
@@ -376,8 +377,9 @@ class TestMailEmpties:
 
 class TestMailGFailures:
     def test_render_g_get_raises(self, app, monkeypatch):
-        from flask import g
         from unittest import mock
+
+        from flask import g
 
         monkeypatch.setattr(app_module, "_recipient_locale", lambda *a, **k: "es")
         monkeypatch.setattr("flask.render_template", lambda *a, **k: "rendered")
@@ -389,8 +391,9 @@ class TestMailGFailures:
                 )
 
     def test_render_g_pop_raises(self, app, monkeypatch):
-        from flask import g
         from unittest import mock
+
+        from flask import g
 
         monkeypatch.setattr(app_module, "_recipient_locale", lambda *a, **k: "es")
         monkeypatch.setattr("flask.render_template", lambda *a, **k: "rendered")
@@ -402,8 +405,9 @@ class TestMailGFailures:
                 )
 
     def test_mailutil_g_pop_raises(self, app, monkeypatch):
-        from flask import g
         from unittest import mock
+
+        from flask import g
 
         monkeypatch.setattr(app_module, "_recipient_locale", lambda *a, **k: "es")
         monkeypatch.setattr(app_module, "translate", lambda s, loc: s)
@@ -424,18 +428,16 @@ class TestPublicStateResiduals:
                 app_module._public_state({"index": 0})
 
     def test_missing_question_key(self, app):
-        with app.test_request_context("/"):
-            with pytest.raises(KeyError):
-                app_module._public_state(
-                    {"questions": [{"options": ["A", "B", "C", "D"]}], "index": 0}
-                )
+        with app.test_request_context("/"), pytest.raises(KeyError):
+            app_module._public_state(
+                {"questions": [{"options": ["A", "B", "C", "D"]}], "index": 0}
+            )
 
     def test_missing_options_key(self, app):
-        with app.test_request_context("/"):
-            with pytest.raises(KeyError):
-                app_module._public_state(
-                    {"questions": [{"question": "Q?"}], "index": 0}
-                )
+        with app.test_request_context("/"), pytest.raises(KeyError):
+            app_module._public_state(
+                {"questions": [{"question": "Q?"}], "index": 0}
+            )
 
 
 class TestGenerateResiduals:
@@ -549,8 +551,9 @@ class TestCreateAppResiduals:
 
 class TestModelResiduals:
     def test_duplicate_email(self, app, existing_user):
-        from sqlalchemy.exc import IntegrityError
         from flask_security.utils import hash_password
+        from sqlalchemy.exc import IntegrityError
+
         from app import db, user_datastore
 
         with app.app_context():
@@ -566,6 +569,7 @@ class TestModelResiduals:
 
     def test_duplicate_role(self, app):
         from sqlalchemy.exc import IntegrityError
+
         from app import Role, db
 
         with app.app_context():
@@ -578,6 +582,7 @@ class TestModelResiduals:
 
     def test_null_email(self, app):
         from sqlalchemy.exc import IntegrityError
+
         from app import User, db
 
         with app.app_context():
@@ -594,6 +599,7 @@ class TestModelResiduals:
 
     def test_multi_role(self, app):
         from flask_security.utils import hash_password
+
         from app import Role, User, db, user_datastore
 
         with app.app_context():
@@ -662,7 +668,6 @@ class TestLanResiduals:
         assert ":5000" in capsys.readouterr().out
 
     def test_tailscale_multi_first(self, monkeypatch, capsys):
-        import socket as _sock
 
         self._sock(monkeypatch)
 
@@ -760,8 +765,9 @@ class TestSequentialRaces:
             assert sess["quiz"]["index"] == 1
 
     def test_sequential_duplicate_email(self, app, existing_user):
-        from sqlalchemy.exc import IntegrityError
         from flask_security.utils import hash_password
+        from sqlalchemy.exc import IntegrityError
+
         from app import User, db, user_datastore
 
         with app.app_context():

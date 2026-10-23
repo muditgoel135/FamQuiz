@@ -44,6 +44,15 @@
     </noscript>
     <main id="main" class="home-main d-flex flex-column gap-3">
         <h1 class="visually-hidden">FamQuiz</h1>
+        {% if not quiz_ready %}
+        <section class="home-card" aria-label="{{ _('Setup status') }}">
+            <p class="mb-0">
+                <strong>{{ _('Quiz questions are not set up yet.') }}</strong>
+                {{ _('You can still make an account and look around — quizzes start after the host adds the free quiz key. The host opens') }}
+                <a href="{{ url_for('guide') }}">{{ _('How to use') }}</a>.
+            </p>
+        </section>
+        {% endif %}
         <div class="home-top row g-3 mx-0">
             <section class="col-12 col-lg-6 ps-0 pe-0 pe-lg-2" aria-label="{{ _('Leaderboard') }}">
                 <div class="home-card h-100">

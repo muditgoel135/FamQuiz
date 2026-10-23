@@ -17,6 +17,25 @@
     {% include 'game_notify.html' %}
     <main id="main" class="board-wrap d-flex flex-column gap-3">
         <h1 class="visually-hidden">{{ _('How to use') }}</h1>
+        <section class="home-card" aria-label="{{ _('Setup status') }}">
+            <h2 class="home-heading">{{ _('Setup status') }}</h2>
+            <ol class="mb-0">
+                <li>
+                    {% if quiz_ready %}
+                    {{ _('Quiz questions: ready — quizzes work.') }}
+                    {% else %}
+                    {{ _('Quiz questions: not ready — quizzes start after the host adds the free quiz key.') }}
+                    {% endif %}
+                </li>
+                <li>
+                    {% if mail_ready %}
+                    {{ _('Password emails: ready — forgot-password works.') }}
+                    {% else %}
+                    {{ _('Password emails: off — they are skipped until the host adds the free mail key. Players can still play.') }}
+                    {% endif %}
+                </li>
+            </ol>
+        </section>
         <section class="home-card" aria-label="{{ _('Welcome to FamQuiz!') }}">
             <h2 class="home-heading">{{ _('Welcome to FamQuiz!') }}</h2>
             <ol class="mb-0">
@@ -45,6 +64,9 @@
         <section class="home-card" aria-label="{{ _('If you run the main computer') }}">
             <h2 class="home-heading">{{ _('If you run the main computer') }}</h2>
             <ol class="mb-0">
+                <li>
+                    {{ _('First-time setup: the host adds two free keys — quiz and mail. The game window says which are missing and prints the guide address.') }}
+                </li>
                 <li>
                     {{ _('Start the game by opening the program the usual way, on a computer that stays plugged in and awake while family plays.') }}
                 </li>

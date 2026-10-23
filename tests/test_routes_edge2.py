@@ -7,7 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 import app as app_module
-from app import GameSession, db
+from app import db
 
 
 def _login(client, existing_user):
@@ -19,6 +19,7 @@ def _login(client, existing_user):
 
 def _make_user(app, email, **kw):
     from flask_security.utils import hash_password
+
     from app import User, user_datastore
 
     aliases = {
@@ -762,6 +763,7 @@ class TestFinishExact:
 
     def test_tie_not_win(self, client, app, existing_user):
         from flask_security.utils import hash_password
+
         from app import User, db, user_datastore
 
         with app.app_context():

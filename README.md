@@ -2,10 +2,13 @@
 
 FamQuiz is a family quiz game. Pick **one computer to run the game** (we call it the **main computer**). That computer must stay on and awake while you play. Everyone else plays in a web browser on a phone or laptop — nothing to install.
 
+If you only have the single `FamQuiz.exe` file (a helper built it for you), skip straight to [Section A](#a-got-famquizexe-set-up-once-then-play-windows) — you do not need any of Sections 0–8 or 11.
+
 Fast correct answers get more points. During the game you may get bonus helpers (for example: double points, remove 2 wrong answers, extra time, or a hint showing the first letter). The highest total wins. You can see best-ever scores on the Leaderboard page and your own games/wins/bonuses on the Stats page.
 
 > You do **not** need to know code. Follow the steps in order. Each step tells you what you should see.
 > If something looks different, go to [If something goes wrong](#if-something-goes-wrong).
+> Already have `FamQuiz.exe`? Use [Section A](#a-got-famquizexe-set-up-once-then-play-windows) instead of Sections 0–8 and 11.
 
 **What you need before you start (about 20–30 minutes):**
 
@@ -17,6 +20,35 @@ Fast correct answers get more points. During the game you may get bonus helpers 
 * Internet on the main computer for setup (install takes 2–5 minutes).
 
 **About examples in this guide:** every step describes what you should see on your screen. Example numbers like `192.168.1.20` or `100.87.45.12` and example keys are *not* yours — never type the example literally, always use your own numbers. Never share photos of your secret passwords — anyone with the photo can spend your free allowance or read your mail account.
+
+---
+
+## A. Got FamQuiz.exe? Set up once, then play (Windows)
+
+`FamQuiz.exe` is the whole game packed into one program. You put it in a folder on the main computer, double-click it, and the black window that opens IS the game. This section is the complete path for exe users — the rest of this guide applies mostly to code users (Sections 0–8, 11).
+
+Wherever the guide says "start with `python app.py`", exe users instead: close the black window and double-click `FamQuiz.exe` again. Everything else (accounts, scores, settings) is identical for players.
+
+**Steps (about 15 minutes):**
+
+1. **Put the exe in its own folder.** Create a folder like `FamQuiz` inside Documents, and put `FamQuiz.exe` in it. That folder now holds everything: the game, your settings file, and the family scores database.
+2. **Open it the first time.** Double-click `FamQuiz.exe`.
+   * If Windows shows **"Windows protected your PC"**: click **More info** → **Run anyway**. This appears because the file has no paid digital signature (normal for single-file family programs; the game is FamQuiz itself).
+   * If Windows asks about **firewall**: tick **Private**(or leave "Private networks" ticked), leave **Public** unticked → **Allow access**. Skipped it or already clicked Cancel? — see [If it looks wrong](#a5-it-looks-wrong--common-fixes) below.
+   * The black window stays open the whole time you play. Closing it (or the × button) stops the game for everyone.
+3. **Setting file created automatically.** On the very first open, the window says **"Welcome! First-run setup"** and has just created a settings file called `.env` next to the exe — nothing for you to copy. Leave the game window open and go to step 4.
+4. **Add the two free keys inside the game's guide page.** In any browser on this same computer, open the address that the window printed (it looks like `http://127.0.0.1:5000/guide`) — that is the in-game **How to use** page. It has a **Setup status** card at the top that tells you live whether each key is added. Add the keys exactly as in Section 4 (the quiz key, from `https://ollama.com`) and Section 6 (the mail key, from `https://www.mailjet.com` — optional) — same sites, same clicks, one difference: your `.env` is inside the folder with the exe (step 3), not a code folder; and to restart after saving, close the black window and open `FamQuiz.exe` again. When the **Setup status** card says **ready** for both, you are done. (Also re-check the window: it prints `Quiz questions: READY` once the quiz key works.)
+5. **Let the first phone connect.** The window prints three `FamQuiz` addresses. On any phone on the SAME home Wi-Fi — not guest Wi-Fi — type the `FamQuiz on your Wi-Fi: http://192.168.x.x:5000` address (with `:5000` and `http://`) into the browser. If the light-blue FamQuiz page opens, family game night works. Games can also be reused any time the app prints a *new* Wi-Fi address (routers shuffle addresses sometimes) — or skip that forever with the last step.
+6. **Keep the computer awake.** While someone plays: **Windows**: Settings → System → Power (or Power & battery) → set "Put my device to sleep after / when plugged in" to **Never** (screen off is fine, sleep off is the point). **Mac**: System Settings → Battery/Energy Saver → tick "Prevent automatic sleeping when the display is off" and plug the power. **Linux**: run `sudo systemctl mask sleep.target suspend.target hibernate.target` (undo someday with `unmask`). Many laptops also have a quick "keep awake / presentation mode" button in F-keys — that works too.
+7. **Far-away family (optional):** everyone installs the free Tailscale app (Section 5B — same clicks) and then you use the `FamQuiz via Tailscale: http://100.x.x.x:5000` address. Bonus: that address never changes, so you can close the family link once and be done forever.
+8. **Every game night from now on** = open the folder and double-click `FamQuiz.exe`. Accounts, scores, keys: all saved in that folder, nothing to redo.
+
+### A5. It looks wrong — common fixes
+
+* **The window flashes and disappears instantly** → it printed an error and closed. To read it: open the folder in File Explorer → click the address bar → type `powershell` → Enter → run `.\FamQuiz.exe` there — now the error stays on screen. Cover any long secrets before photographing, then continue in [If something goes wrong](#if-something-goes-wrong).
+* **Setup status still says "not ready" after a key paste** → the key was not saved into the `.env` next to the exe (it may exist in an old code folder — the exe reads only the file next to itself). Edit THAT file, save, restart the exe.
+* **Windows firewall got cancelled earlier** → windows key → "Allow an app through Windows Firewall" → find FamQuiz → tick its "Private" box. Or open C:\Windows\System32\Firewall.cpl → "Allow an app..." → FamQuiz. Then restart the exe.
+* **`Port in use` in the window** → the game is already open somewhere, OR another copy: close others. Or in the `.env` next to the exe change `PORT=5000` → `5001`, save, reopen the exe, use the new `:5001`.
 
 ---
 
@@ -147,10 +179,11 @@ Open `.env` only with a plain-text editor: Notepad on Windows, and on Mac use Te
 4. Click right after `=`, Paste, Save and close. Good = `OLLAMA_API_KEY=` followed immediately by the long code on one line, no spaces, no quotes, no line break. Bad = extra space or the file saved as `.env.txt`. Your `.env` already has mail lines *above* this line — that is normal, leave them for Section 6.
 5. You won’t see a line starting `OLLAMA_MODEL` — that is normal, it is commented out in the template. Leave it. The app already uses the free default. Ignore model names like `gpt-oss:20b` unless a helper tells you to change it.
 6. Restart the app so it reads the key: in the black window press `Ctrl+C` to stop, then run `python app.py` again (or `python3 app.py` on Mac). In the browser start a new game with Number of Questions = 2. If 2 questions appear, it works.
+   Exe users: edit the `.env` next to `FamQuiz.exe`, save, then close the black window and double-click `FamQuiz.exe` again (same test).
 
 **Safety:** Treat the key like a bank password. Don’t send it in WhatsApp/email/screenshots — strangers can spend your free allowance. If you shared it: Ollama site → API keys → Delete `FamQuiz` → New key → paste the new one into `.env` → restart.
 
-**If you skip this:** starting a quiz shows “Quiz questions aren’t turned on yet.” Everything else still opens.
+**If you skip this:** starting a quiz shows “Quiz generation is not configured yet (missing OLLAMA_API_KEY). Add it to .env to enable quizzes.” Everything else still opens.
 
 > For helpers only — optional check (uses 1–2 free credits): with `(.venv)` active run `pytest -m live tests/test_ollama_live.py -q -k "20b"`. `passed` = works, `skipped` = no key found so the test did nothing, `failed` = copy-paste error.
 
@@ -209,7 +242,7 @@ Open `.env` only with a plain-text editor: Notepad on Windows, and on Mac use Te
    SECURITY_EMAIL_SENDER=FamQuiz <you@your-verified-email.com>
    ```
 
-   For the last two lines keep the format `FamQuiz <...>` with brackets — just replace `you@your-verified-email.com` with the green-check Gmail from Step 2. Save, then restart the app (`Ctrl+C`, then `python app.py` again).
+    For the last two lines keep the format `FamQuiz <...>` with brackets — just replace `you@your-verified-email.com` with the green-check Gmail from Step 2. Save, then restart the app (`Ctrl+C`, then `python app.py` again). Exe users: the `.env` next to `FamQuiz.exe`, save, close the black window, double-click the exe again.
 
 5. Test: in FamQuiz click Log out → Forgot password → type your green-check email → check that inbox + Spam in 1–2 minutes.
 
@@ -219,7 +252,7 @@ Open `.env` only with a plain-text editor: Notepad on Windows, and on Mac use Te
 
 ## 7. Run + play every day
 
-1. On the main computer: open the instruction window inside `FamQuiz` (Section 2). If you closed it, repeat the activate line from Section 3 so you see `(.venv)` again. Then type `python app.py` Enter (on Mac `python3 app.py`). You should see `Running on http://...:5000`, no red error. Keep this window open while you play — closing it stops the game for everyone.
+1. On the main computer: open the instruction window inside `FamQuiz` (Section 2). If you closed it, repeat the activate line from Section 3 so you see `(.venv)` again. Then type `python app.py` Enter (on Mac `python3 app.py`). You should see `Running on http://...:5000`, no red error — plus the three `FamQuiz on ...` addresses and the setup status lines (`Quiz questions: READY` etc.). Keep this window open while you play — closing it stops the game for everyone. (Using `FamQuiz.exe` instead? [Section A](#a-got-famquizexe-set-up-once-then-play-windows) is your daily flow: double-click it.)
 2. On that same computer, open Chrome/Edge and in the address bar go to: `http://127.0.0.1:5000`. You should see a Welcome card with Email and Password boxes and a blue Log in button. First time: Sign up with email + password → choose Game options → **Start game** → wait for the countdown → answer.
 3. Invite family: send them the link you used in Section 5A/5B (same Wi-Fi number or Tailscale number, always with `:5000`). If your port is not `5000`, use the link shown on the in-app Guide page (`/guide` — for example `http://YOUR-number:5001/guide`): that page always shows the correct number from your `.env` `PORT` setting, so follow it.
 4. Settings: click your profile → Settings. Theme applies instantly. Language (English / Mandarin Chinese / Spanish / Hindi) only changes your own screen.
@@ -244,16 +277,18 @@ No need to run this to play.
 
 Find your message below. Try only that fix first.
 
-1. **You see: “Quiz questions aren’t turned on yet” (missing key)** → Ask the family admin to add the Ollama quiz key (see Section 4), save `.env`, then stop and restart with `Ctrl+C` + `python app.py`.
-2. **Quiz says “Something went wrong” (error 502)** → Press Start once again. The question service is sometimes flaky and the app drops bad questions automatically. If it happens twice in a row, wait 1 minute.
-3. **You see “Slow down / Cooling down” (error 429)** → Wait 15 seconds and try once. This is normal — it protects your free credits. Don’t double-click. Quiz allows 1 try per 10 seconds, lobby 1 per 5 seconds.
-4. **“Timer not started” (error 409)** → Reload the question page, answer only once, don’t double-click. Answering before the question loads gives no points.
-5. **“No live game / No active quiz” (error 404)** → Start from the homepage using the same link as everyone (don’t mix `localhost` on one device and the Tailscale number on another).
+1. **You see: "Quiz generation is not configured yet (missing OLLAMA_API_KEY)"** → The quiz key is missing. Ask the family admin to add the Ollama quiz key (see Section 4), save `.env`, then stop and restart with `Ctrl+C` + `python app.py`. Exe users: the `.env` next to `FamQuiz.exe`, then close the black window and double-click the exe again.
+2. **You see "Quiz service failed" (error 502)** → Press Start once again. The question service is sometimes flaky and the app drops bad questions automatically. If it happens twice in a row, wait 1 minute.
+3. **You see "Slow down. Wait a few seconds." (error 429)** → Wait 15 seconds and try once. This is normal — it protects your free credits. Don't double-click. Quiz allows 1 try per 10 seconds, lobby 1 per 5 seconds.
+4. **"Timer not started. Reload the question." (error 409)** → Reload the question page, answer only once, don't double-click. Answering before the question loads gives no points.
+5. **"No live game. Start one from the homepage." or "No active quiz." (error 404)** → Start from the homepage using the same link as everyone (don't mix `localhost` on one device and the Tailscale number on another).
 6. **Link won’t open (Tailscale)** → Checklist: 1) Is the main computer on with the app window open showing `Running on...`? 2) Is Tailscale ON and Connected for *both* people and logged into the *same* family account? 3) Did you copy the full link including `:5000` with `http://` (not `https://`)? For helpers: try `tailscale status`, `ping 100.x` (your number), `curl http://YOUR-number:5000/guide`.
 7. **No mail arrives** → Check Spam first, search for your sender address. Was the sender verified green Active (Section 6 Step 2)? Are server/port exactly as shown? If the mail secret changed, old reset links stop working — request a new Forgot Password mail.
-8. **“Port in use / address already in use”** → Close other copies of the app. If still stuck, ask a helper to run on another door number: Mac/Linux `PORT=5001 python app.py`, Windows `set PORT=5001` then `python app.py` → open `:5001` instead of `:5000`.
-9. **Warning about `SECRET_KEY` / `supersecret`** → In `.env` make `SECRET_KEY=` and `SECURITY_PASSWORD_SALT=` long random strings (use a password manager to generate, 32+ characters). Save, restart. All logins reset — that is expected.
+8. **“Port in use / address already in use”** → Close other copies of the app. If still stuck, ask a helper to change the door number: in `.env` change `PORT=5000` to `PORT=5001`, save, restart, and open `:5001` instead of `:5000`. (Exe users: the `.env` next to the exe.) Helpers-in-a-terminal can also run `python app.py` with the port set first: Mac/Linux `PORT=5001 python app.py`, Windows PowerShell `$env:PORT="5001"` then `python app.py`.
+9. **Warning about `SECRET_KEY` / `supersecret`** → In `.env` make `SECRET_KEY=` and `SECURITY_PASSWORD_SALT=` long random strings (use a password manager to generate, 32+ characters). Save, restart. All logins reset — that is expected. (The exe creates these two lines with freshly generated random values automatically on first run — people who never copied `.env.example` by hand never see this warning.)
 10. **Logged out in a loop / login won’t stick** → Use the same web address on all devices, allow cookies in the browser, don’t open the app inside another site’s frame.
+11. **The black window prints "Quiz questions: NOT READY ..." or "Password emails: off ..." at startup** → that is the startup status check. Add the matching key (Section 4 for quiz, Section 6 for mail), save `.env` next to the program, and restart as usual. The missing piece is the ONLY thing failing — all other pages still work.
+12. **Double-clicking the exe does nothing visible (window flashes and disappears)** → open the window inside the exe's folder and run it from there so the error stays visible: File Explorer → address bar → type `powershell` → Enter → `.\FamQuiz.exe`. Then continue with the matching message above or [Section A5](#a5-it-looks-wrong--common-fixes).
 
 Still stuck? Take a photo of the red text in the instruction window. Cover any long passwords or numbers starting with `100.` and send to your family admin.
 
@@ -294,7 +329,7 @@ OLLAMA_MODEL=gpt-oss:20b
 OLLAMA_HOST=https://ollama.com
 ```
 
-If email settings are empty, FamQuiz still runs but sends no mail — you will see a warning. If the Ollama key is missing, Start Quiz shows “Quiz service unavailable”. If secrets are short/missing you get a warning and logins reset on restart — make them long random with a password manager.
+If email settings are empty, FamQuiz still runs but sends no mail — you will see a warning. If the Ollama key is missing, starting a quiz shows “Quiz generation is not configured yet (missing OLLAMA_API_KEY). Add it to .env to enable quizzes.” If secrets are short/missing you get a warning and logins reset on restart — make them long random with a password manager.
 
 > Builder note: old names `SMTP-SERVER`, `SMTP-PORT`, `MAIL_SENDER`, `MAIL-API-KEY` still work. `PORT` is used by `python app.py`; plain `flask run` needs `FLASK_RUN_HOST=0.0.0.0` / `FLASK_RUN_PORT=5000` too (already in `.env.example`).
 
@@ -356,7 +391,7 @@ This section is for the helper who wants the game as **one program file** (`FamQ
 
 **Before you start:** you must have finished Section 3 at least once (the `.venv` helper folder exists) and have your `.env` filled (Sections 4 and 6). You build **on the same kind of computer that will run the game**: a file built on Windows runs only on Windows, a build made on a Mac runs only on a Mac, Linux likewise. Want all three kinds? Repeat 11.1–11.6 on each machine.
 
-**Good to know:** the finished file is one program of about 30–60 MB. Opening it takes 2–5 seconds longer than `python app.py` (it unpacks itself first). Closing its black window still stops the game for everyone, exactly like Section 7.
+**Good to know:** the finished file is one program of about 30–60 MB. Opening it takes 2–5 seconds longer than `python app.py` (it unpacks itself first). Closing its black window still stops the game for everyone, exactly like Section 7. And the first open on any new computer creates its own `.env` (fresh random secrets, only the two API keys empty) and prints plain first-run instructions — see 11.4.
 
 ### 11.1 Install the builder (once)
 
@@ -376,132 +411,14 @@ python3 -m pip install -r requirements-dev.txt
 
 What you should see: the last line says `Successfully installed pyinstaller-6.x.x` (and the test tools). This project's Python needs PyInstaller **6.15 or newer**. If you see a red error instead, you are not in the right folder or `(.venv)` is missing — recheck Sections 2 and 3.
 
-### 11.2 Create two small text files in the `FamQuiz` folder
+### 11.2 The two helper files (already in your folder)
 
-Both go **next to `app.py`** (not inside any subfolder). Nothing in `app.py`, `routes.py` or any other game file changes — these two files are only for packaging. After adding them you can re-run the quick checks any time (`pytest tests/ -q` → still all green).
+Both files already ship with FamQuiz, next to `app.py`. Nothing to create or paste — just check they are there: in the instruction window inside the `FamQuiz` folder run `ls run_famquiz.py FamQuiz.spec` (`ls` works on Windows PowerShell too). You should see both names. If one is missing, re-download the FamQuiz folder (Section 2) — do not write them by hand.
 
-**File 1 — `run_famquiz.py`** (the small starter for the packaged game: it keeps your `.env` and the scores database in the folder you put the exe in, instead of inside the exe's throw-away unpack space — without it, scores would vanish on every close). New file, paste exactly:
+* **`run_famquiz.py`** — the small starter inside the packaged game: it keeps `.env` and the scores database next to the exe (instead of inside the exe's throw-away unpack space), and **on the very first open it creates `.env` automatically**: your two API keys start empty, the two secret codes are generated fresh and random, and the window prints plain-language first-run instructions (“Welcome! First-run setup…”). That is why a handed-out exe already behaves like a real product before anyone touches a setting.
+* **`FamQuiz.spec`** — the build recipe: what goes inside the one file (templates, the game theme and style files, all four UI languages) and what stays out (the test files). It also packs Flask's login library parts that plain scanning misses — and it never packs `.env` (the tests guard that), so secrets never travel inside the exe.
 
-```python
-"""Packaged entry point for FamQuiz.
-
-Keeps ``.env`` and the scores database next to ``FamQuiz.exe`` (not in the
-self-extracting temp folder, which is deleted on exit), so scores survive
-a restart.
-
-The module body is side-effect free on import: everything happens inside
-:func:`main`. That keeps ``import app`` *after* the database URI is set
-(``app.BASE_CONFIG`` is frozen at import time) while letting the test
-suite import this file without starting a server.
-"""
-
-import os
-import sys
-
-
-def base_dir():
-    """
-    Return the folder that holds ``.env``, the database and the exe.
-
-    :return: Absolute path of the base folder.
-    :rtype: str
-    """
-
-    if getattr(sys, "frozen", False):
-        # In a frozen exe, place .env + database next to FamQuiz.exe.
-        return os.path.dirname(sys.executable)
-    return os.path.dirname(os.path.abspath(__file__))
-
-
-def prepare_env(base):
-    """
-    Load ``.env`` and point the database at ``<base>/instance/site.db``.
-
-    Must run *before* ``app`` is imported: ``app.BASE_CONFIG`` reads
-    ``SQLALCHEMY_DATABASE_URI`` once, at import time.
-
-    :param base: The base folder that holds .env and the instance folder.
-    :type base: str
-    :return: The database URI that was set.
-    :rtype: str
-    """
-
-    from dotenv import load_dotenv
-
-    load_dotenv(os.path.join(base, ".env"))
-
-    instance = os.path.join(base, "instance")
-    os.makedirs(instance, exist_ok=True)
-    uri = "sqlite:///" + os.path.join(instance, "site.db").replace("\\", "/")
-    os.environ["SQLALCHEMY_DATABASE_URI"] = uri
-    return uri
-
-
-def main():
-    """
-    Start the FamQuiz server (LAN-visible, never in debug mode).
-
-    :return: None.
-    :rtype: None
-    """
-
-    prepare_env(base_dir())
-
-    import app as app_module
-
-    port = int(os.getenv("PORT", 5000))
-    app_module._print_lan_urls(port)
-    # Keep 0.0.0.0 for LAN + Tailscale sharing; never debug on LAN (RCE).
-    app_module.app.run(debug=False, host="0.0.0.0", port=port)
-
-
-if __name__ == "__main__":
-    main()
-```
-
-**File 2 — `FamQuiz.spec`** (the build recipe: what goes inside the one file — templates, game theme and style files, all four UI languages — and what stays out, like the test files; it also packs Flask's login library parts that plain scanning misses). New file, paste exactly:
-
-```python
-# -*- mode: python ; coding: utf-8 -*-
-
-from PyInstaller.utils.hooks import collect_all
-
-fs_data, fs_binaries, fs_hidden = collect_all("flask_security")
-
-a = Analysis(
-    ["run_famquiz.py"],
-    pathex=[],
-    binaries=fs_binaries,
-    datas=[
-        ("templates", "templates"),
-        ("static", "static"),
-        ("translations.json", "."),
-    ],
-    hiddenimports=fs_hidden,
-    excludes=["tests", "pytest", "pytest_cache"],
-    noarchive=False,
-)
-
-pyz = PYZ(a.pure)
-
-exe = EXE(
-    pyz,
-    a.scripts,
-    a.binaries,
-    a.datas,
-    [],
-    name="FamQuiz",
-    console=True,
-    debug=False,
-    upx=False,
-)
-
-# No COLLECT(): placing the EXE call last (without it) is what makes this
-# a single-file (onefile) build. Data lands in the exe's temp folder,
-# exactly where app.py and Flask look for it when frozen.
-```
-
-> Builder note: the `EXE(...)` call last without a `COLLECT(...)` section is what makes this a **single-file** build. `console=True` keeps the black window visible; setting it to `False` would make an invisible game nobody can stop.
+> Builder note: if you ever edit `run_famquiz.py` or `FamQuiz.spec`, run `pytest tests/test_packaging.py -q` — those tests re-check exactly the invariants above.
 
 ### 11.3 Build the one file
 
@@ -519,38 +436,46 @@ python3 -m PyInstaller --clean FamQuiz.spec
 
 Takes about 1 minute. You should see a final line like `Building EXE from EXE-00.toc ... successfully`. The result:
 
-* Windows: `dist\FamQuiz\FamQuiz.exe`
-* Mac / Linux: `dist/FamQuiz/FamQuiz`
+* Windows: `dist\FamQuiz.exe` (a single program file)
+* Mac / Linux: `dist/FamQuiz` (a single program file)
 
 The `build\` folder next to it is working material; delete it freely (Windows `Remove-Item -LiteralPath build -Recurse -Force`; Mac/Linux `rm -rf build`). Opening many warnings inside `build\` with words like "not found" is normal — only worry if the final `successfully` line is missing.
 
 > Tip: building inside a synced folder (Google Drive/OneDrive/Dropbox) can turn 1 minute into 10. If it crawls, copy the whole `FamQuiz` folder to Documents, build there, then move the finished file back.
 
-### 11.4 Put your secret settings next to the file
+### 11.4 Choose what ships next to the exe (your keys, or theirs)
 
-**Windows:**
+The exe itself never contains secrets — the recipe refuses to pack `.env` inside the program. Two ways to finish the setup, pick one:
 
-```powershell
-copy .env dist\FamQuiz\
-```
+* **Reuse your own setup (you + your family):** copy your filled `.env` next to the exe.
 
-**Mac / Linux:**
+  **Windows:**
 
-```bash
-cp .env dist/FamQuiz/
-```
+  ```powershell
+  copy .env dist\
+  ```
 
-On first run the scores database appears **next to the exe** inside a new `instance\site.db` (Windows) or `instance/site.db` (Mac/Linux). Treat the exe's folder like the old `FamQuiz` folder: `.env` holds your secrets (Section 6 safety note), and Section 10.4 applies as is.
+  **Mac / Linux:**
+
+  ```bash
+  cp .env dist/
+  ```
+
+  The exe then runs instantly with your keys.
+
+* **Hand out a fresh exe (recommended when sending to other families):** send **just `FamQuiz.exe`** (chat, USB — you choose). On its first run on their computer it creates its own fresh `.env` with the two API keys empty and both secret codes freshly generated, prints “Welcome! First-run setup — two small steps left:” and shows the guide web address. Continue from [Section A](#a-got-famquizexe-set-up-once-then-play-windows) step 3 onward — that section is written for exactly this case.
+
+On first run the scores database appears **next to the exe** inside a new `instance\site.db` (Windows) or `instance/site.db` (Mac/Linux). Whoever runs the game is the family admin for the Section 10.4 safety rules.
 
 ### 11.5 First run
 
-* **Windows:** double-click `dist\FamQuiz\FamQuiz.exe`.
+* **Windows:** double-click `dist\FamQuiz.exe`.
   * If Windows shows "Windows protected your PC": More info → **Run anyway**. This appears because the file has no paid digital signature; it is normal for one-file programs.
   * If Windows asks about firewall: tick **Private**, untick Public → **Allow** (same choice as Section 5A.3).
 * **Mac / Linux:** start it from a Terminal, not the file manager. On Mac also the very first time: if macOS refuses to open it ("unidentified developer"), right-click `FamQuiz` → **Open** → **Open** again. Then:
 
 ```bash
-cd dist/FamQuiz
+cd dist
 ./FamQuiz
 ```
 
@@ -562,7 +487,7 @@ Every day: Windows → double-click the exe. Mac/Linux → the two Terminal line
 
 Quick one-time check list after building:
 
-1. The black window prints the three `FamQuiz on ...` URLs, no red errors.
+1. The black window prints the three `FamQuiz on ...` URLs and the status check — `Quiz questions: READY` (the exe also greets first-run users with “Welcome! First-run setup — two small steps left:” and no red errors).
 2. `http://127.0.0.1:5000` shows the light-blue FamQuiz screen (means styles are packed correctly).
 3. Sign up a test user (means logins work in the packaged game).
 4. Start a game with 2 questions → questions appear (means your `.env` Ollama key is read).
@@ -577,7 +502,7 @@ Repeat only 11.3. The build overwrites the old program file; your `.env` and `in
 
 Everything from the regular list at the top still applies. Exe-specific fixes:
 
-1. **The black window flashes and disappears** → open the window inside `dist\FamQuiz` (Windows: type `powershell` in the address bar; Mac/Linux: right-click the folder → Open in Terminal) and run `.\FamQuiz.exe` (Windows) or `./FamQuiz` (Mac/Linux). The error text stays on screen — cover any secrets (lines starting `OLLAMA_API_KEY`, `MAIL_USERNAME`, `SECRET_KEY` or numbers starting `100.`) before photographing.
+1. **The black window flashes and disappears** → open the window inside `dist\` (Windows: type `powershell` in the address bar; Mac/Linux: right-click the folder → Open in Terminal) and run `.\FamQuiz.exe` (Windows) or `./FamQuiz` (Mac/Linux). The error text stays on screen — cover any secrets (lines starting `OLLAMA_API_KEY`, `MAIL_USERNAME`, `SECRET_KEY` or numbers starting `100.`) before photographing.
 2. **`ModuleNotFoundError: xxx`** in that error → a helper adds the missing name to `FamQuiz.spec` the same way `flask_security` is handled (`collect_all("xxx")`), then rebuilds (11.3).
 3. **"Port in use / address already in use"** → the game is already running in another window (`python app.py` or a second exe). Close that one, or set a new door number with `PORT` (regular troubleshooting #8).
 4. **Antivirus/Defender removes or blocks the exe** → restore it and add an exception; one-file programs are flagged most, and this one is just packaged FamQuiz.

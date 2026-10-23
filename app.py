@@ -1165,12 +1165,54 @@ def _ensure_single_live_game(app):
 app = create_app()
 
 
+def _boot_status_lines():
+    """
+    Return one line per free-key feature describing setup readiness.
+
+    Mirrors the same checks the app itself does later (quiz key in
+    :func:`_ollama_client`, mail pair in :func:`create_app`), so what the
+    family sees at boot matches what actually happens at game time. Pure
+    environment reading: never touches the network.
+
+    :return: Status lines, ready lines first.
+    :rtype: list[str]
+    """
+
+    lines = []
+    if (OLLAMA_API_KEY or "").strip():
+        lines.append("Quiz questions:  READY")
+    else:
+        lines.append(
+            "Quiz questions:  NOT READY - quiz key missing; open /guide "
+            "(step 1) on this computer. The rest of the game still works."
+        )
+    mail_server = _env("MAIL_SERVER", "SMTP-SERVER", default="")
+    mail_secret = _env("MAIL_PASSWORD", default="")
+    if mail_server and mail_secret:
+        lines.append("Password emails: READY")
+    else:
+        lines.append(
+            "Password emails: off - forgot-password emails are skipped "
+            "until the mail key is added (/guide, step 2). Playing still "
+            "works."
+        )
+    secret = os.getenv("SECRET_KEY") or ""
+    if not secret or secret.startswith("supersecret"):
+        lines.append(
+            "WARNING: SECRET_KEY is the default value - set a long random "
+            "one in .env (README section 10.1) so family logins stay safe."
+        )
+    return lines
+
+
 def _print_lan_urls(port):
     """
-    Print reachable URLs (Werkzeug banners vary by version).
+    Print reachable URLs and setup status lines (Werkzeug banners vary).
 
     Older Werkzeug prints only a 127.0.0.1 line even when bound to
-    0.0.0.0, which looks localhost-only. These lines are explicit.
+    0.0.0.0, which looks localhost-only. These lines are explicit. The
+    status lines tell the host up front what still needs a key, instead
+    of failing quietly when the first quiz starts.
     Never raises: startup must not depend on network probing.
 
     :param port: The port number the app is running on.
@@ -1222,6 +1264,9 @@ def _print_lan_urls(port):
             "see README if playing far away)",
             flush=True,
         )
+
+    for line in _boot_status_lines():
+        print(line, flush=True)
 
 
 if __name__ == "__main__":

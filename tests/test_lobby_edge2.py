@@ -16,6 +16,7 @@ def _login(client, existing_user):
 
 def _second(app):
     from flask_security.utils import hash_password
+
     from app import user_datastore
 
     with app.app_context():

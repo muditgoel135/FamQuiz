@@ -595,6 +595,7 @@ class TestFinishEdge:
 
     def test_tie_not_win(self, client, app, existing_user):
         from flask_security.utils import hash_password
+
         from app import User, db, user_datastore
 
         with app.app_context():
@@ -612,6 +613,7 @@ class TestFinishEdge:
 
     def test_win_by_one(self, client, app, existing_user):
         from flask_security.utils import hash_password
+
         from app import User, db, user_datastore
 
         with app.app_context():

@@ -14,6 +14,7 @@ from uuid import uuid4
 
 from flask import (
     Response,
+    current_app,
     jsonify,
     render_template,
     request,
@@ -283,6 +284,8 @@ def homepage():
         difficulty_options=["easy", "medium", "hard"],
         avatar_initial=avatar_initial,
         max_questions=MAX_QUIZ_QUESTIONS,
+        quiz_ready=_setup_status()["quiz_ready"],
+        mail_ready=_setup_status()["mail_ready"],
     )
 
 
@@ -597,6 +600,28 @@ def _serving_port():
     return 5000
 
 
+def _setup_status():
+    """
+    Return live setup flags for the guide status card and home banner.
+
+    Quiz readiness reads ``app.OLLAMA_API_KEY`` dynamically (the exact
+    value quiz generation uses), mail readiness mirrors the mail
+    extension config, so a page can never claim something the game
+    would not do.
+
+    :return: Dict with ``quiz_ready`` and ``mail_ready`` booleans.
+    :rtype: dict[str, bool]
+    """
+
+    import app as app_module
+
+    quiz_ready = bool((app_module.OLLAMA_API_KEY or "").strip())
+    mail_ready = bool(current_app.config.get("MAIL_SERVER")) and bool(
+        current_app.config.get("MAIL_PASSWORD")
+    )
+    return {"quiz_ready": quiz_ready, "mail_ready": mail_ready}
+
+
 def guide():
     """
     Render the how-to-play guide page.
@@ -609,7 +634,7 @@ def guide():
     :rtype: flask.Response
     """
 
-    return render_template("guide.html", port=_serving_port())
+    return render_template("guide.html", port=_serving_port(), **_setup_status())
 
 
 def leaderboard():
