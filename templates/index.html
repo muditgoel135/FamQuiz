@@ -9,13 +9,14 @@
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=2">
 </head>
 
 <body class="{{ theme_class }}">
-    <nav id="nav" class="home-nav d-flex flex-wrap justify-content-between align-items-center gap-2">
+    <nav id="nav" class="home-nav d-flex flex-wrap justify-content-between align-items-center gap-2" aria-label="{{ _('Main navigation') }}">
+        <a class="skip-link" href="#main">{{ _('Skip to main content') }}</a>
         <a href="{{ url_for('homepage') }}" class="nav-brand d-flex align-items-center gap-2 text-decoration-none">
-            <img src="{{ url_for('static', filename='logo.png') }}" alt="FamQuiz logo" width="48" height="48"
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="{{ _('FamQuiz logo') }}" width="48" height="48"
                 class="nav-logo img-fluid">
             <span class="nav-title home-serif">FamQuiz</span>
         </a>
@@ -38,7 +39,11 @@
 
     {% include 'game_notify.html' %}
 
-    <main class="home-main d-flex flex-column gap-3">
+    <noscript>
+        <div class="alert alert-warning" role="alert">{{ _('Please enable JavaScript to use FamQuiz.') }}</div>
+    </noscript>
+    <main id="main" class="home-main d-flex flex-column gap-3">
+        <h1 class="visually-hidden">FamQuiz</h1>
         <div class="home-top row g-3 mx-0">
             <section class="col-12 col-lg-6 ps-0 pe-0 pe-lg-2" aria-label="{{ _('Leaderboard') }}">
                 <div class="home-card h-100">

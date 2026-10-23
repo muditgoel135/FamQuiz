@@ -622,10 +622,27 @@ class TestTranslationCompleteness:
                     for loc in ("es", "hi", "zh_Hans"):
                         if not any(c in data[loc] for c in candidates):
                             missing.add(norm)
-        # Allowlist: JS-built or attribute strings covered elsewhere.
-        allow = {"points", "pts"}
-        missing -= allow
         assert missing == set(), sorted(missing)[:10]
+
+    def test_no_multiline_literals(self):
+        """A literal that spans lines can never match the catalog.
+
+        ``app.translate()`` looks the string up verbatim, so a
+        line-wrapped literal ("...send reset\\n    instructions.")
+        silently falls back to English in every non-English locale.
+        """
+        pattern = re.compile(r"_\(\s*['\"]([^'\"]+)['\"]\s*\)", re.DOTALL)
+        offenders = []
+        for root, _dirs, files in os.walk(os.path.join(ROOT, "templates")):
+            for name in files:
+                if not name.endswith((".html", ".txt")):
+                    continue
+                with open(os.path.join(root, name), encoding="utf-8") as handle:
+                    text = handle.read()
+                for match in pattern.findall(text):
+                    if "\n" in match:
+                        offenders.append((name, match.strip()[:40]))
+        assert offenders == [], offenders
 
     def test_dict_matches_file(self, client):
         data = self._data()

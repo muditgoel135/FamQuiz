@@ -13,7 +13,7 @@ if __name__ == "__main__":
 
 from uuid import uuid4
 from dotenv import load_dotenv
-from flask import Flask, g, request, session
+from flask import Flask, current_app, g, request, session
 from flask_mail import Mail
 from flask_security import (
     RoleMixin,
@@ -743,7 +743,9 @@ class GameSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(20), default="lobby", nullable=False)
     # lobby -> counting down, active -> live, finished/cancelled -> terminal
-    created_by_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=True)
+    created_by_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
     num_questions = db.Column(db.Integer, default=10, nullable=False)
     difficulty = db.Column(db.String(20), default="medium", nullable=False)
     powerups_enabled = db.Column(db.Boolean, default=True, nullable=False)
@@ -805,6 +807,52 @@ DEFAULT_LOBBY_SECONDS = 300
 MIN_LOBBY_SECONDS = 10
 MAX_LOBBY_SECONDS = 300
 GAME_EXPIRY_GRACE_SECONDS = 120
+
+
+class FinishedQuiz(db.Model):
+    """
+    One row per banked quiz: the server-side idempotency key.
+
+    The session cookie is the only other record that a game was
+    finished, and a second browser tab (or a replayed cookie) would
+    bank the same game twice, inflating ``total_games_played`` and
+    ``total_wins``. The unique ``quiz_token`` makes the count happen
+    exactly once, on the server.
+    """
+
+    id = db.Column(db.Integer, primary_key=True)
+    quiz_token = db.Column(db.String(64), unique=True, nullable=False)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("user.id", ondelete="SET NULL"), nullable=True
+    )
+    finished_at = db.Column(db.Float, nullable=False, default=0.0)
+    # JSON summary returned to the client, so a replay gets the same body.
+    summary = db.Column(db.Text, nullable=True)
+
+    def __init__(
+        self,
+        quiz_token: str,
+        user_id: int | None = None,
+        finished_at: float = 0.0,
+        summary: str | None = None,
+    ):
+        """
+        Initialise a banked-quiz row.
+
+        :param quiz_token: The unique token of the quiz that was banked.
+        :type quiz_token: str
+        :param user_id: Id of the player who played it.
+        :type user_id: int or None
+        :param finished_at: Epoch seconds when the quiz was banked.
+        :type finished_at: float
+        :param summary: JSON summary returned to the client.
+        :type summary: str or None
+        """
+
+        self.quiz_token = quiz_token
+        self.user_id = user_id
+        self.finished_at = finished_at
+        self.summary = summary
 
 
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
@@ -916,9 +964,19 @@ class TranslatedMailUtil(MailUtil):
                 _g.email_locale = locale
             except Exception:
                 pass
-            return super().send_mail(
-                template, subject, recipient, sender, body, html, **kwargs
-            )
+            try:
+                return super().send_mail(
+                    template, subject, recipient, sender, body, html, **kwargs
+                )
+            except Exception as exc:
+                # A broken SMTP account (bad password, greylisting, 552)
+                # must not turn a password reset into a 500 for the
+                # player. Flask-Security has no try/except of its own,
+                # so the failure is swallowed and logged here.
+                current_app.logger.warning(
+                    "Could not send security mail to %s: %s", recipient, exc
+                )
+                return None
         finally:
             try:
                 if previous is sentinel:
@@ -1055,8 +1113,53 @@ def create_app(config_overrides=None):
 
     with app.app_context():
         db.create_all()
+        _ensure_single_live_game(app)
 
     return app
+
+
+def _ensure_single_live_game(app):
+    """
+    Enforce "one family-wide lobby" at the database level.
+
+    Two devices pressing "Start" at the same moment could each pass the
+    application-level "is a game already live?" check and create two
+    lobby rows, leaving a game nobody can cancel. A partial unique index
+    makes the invariant a database rule instead of a race.
+
+    Older databases may already hold several live rows, so they are
+    cancelled first (the newest one wins).
+
+    :param app: The Flask application.
+    :type app: flask.Flask
+    :return: None.
+    :rtype: None
+    """
+
+    from sqlalchemy import text
+
+    try:
+        live = (
+            GameSession.query.filter(
+                GameSession.status.in_(["lobby", "active"])  # type: ignore[attr-defined]
+            )
+            .order_by(GameSession.id.desc())
+            .all()
+        )
+        if len(live) > 1:
+            for stale in live[1:]:
+                stale.status = "cancelled"
+            db.session.commit()
+        db.session.execute(
+            text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_game_session_single_live "
+                "ON game_session ((1)) WHERE status IN ('lobby', 'active')"
+            )
+        )
+        db.session.commit()
+    except Exception as exc:  # pragma: no cover - defensive
+        db.session.rollback()
+        app.logger.warning("Could not enforce the single-live-game index: %s", exc)
 
 
 app = create_app()

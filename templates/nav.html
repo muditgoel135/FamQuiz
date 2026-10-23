@@ -1,6 +1,7 @@
-<nav id="nav" class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+<nav id="nav" class="d-flex flex-wrap justify-content-between align-items-center gap-2" aria-label="{{ _('Main navigation') }}">
+    <a class="skip-link" href="#main">{{ _('Skip to main content') }}</a>
     <a href="{{ url_for('homepage') }}" class="nav-brand d-flex align-items-center gap-2 text-decoration-none">
-        <img src="{{ url_for('static', filename='logo.png') }}" alt="FamQuiz logo" width="48" height="48"
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="{{ _('FamQuiz logo') }}" width="48" height="48"
             class="nav-logo img-fluid">
         <span class="nav-title">FamQuiz</span>
     </a>

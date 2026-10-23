@@ -1,4 +1,4 @@
-<div id="game-notify" class="game-notify" role="alert" aria-live="polite" hidden
+<div id="game-notify" class="game-notify" role="status" aria-live="polite" hidden
     data-status-url="{{ url_for('game_status') }}"
     data-events-url="{{ url_for('game_events') }}"
     data-join-url="{{ url_for('game_join') }}"
@@ -8,7 +8,7 @@
     data-user-status="{{ (current_user.status or 'Ready to play') if current_user.is_authenticated else '' }}">
     <span id="game-notify-dot" class="game-notify-dot" aria-hidden="true"></span>
     <span id="game-notify-text" class="game-notify-text"></span>
-    <span id="game-notify-countdown" class="game-notify-countdown" aria-label="countdown"></span>
+    <span id="game-notify-countdown" class="game-notify-countdown"></span>
     <button type="button" id="game-notify-join" class="game-notify-join">{{ _('Join game') }}</button>
     <button type="button" id="game-notify-dismiss" class="game-notify-dismiss" aria-label="{{ _('Dismiss') }}">✕</button>
 </div>
@@ -27,4 +27,4 @@
         rejoin: {{ _('Rejoin')|tojson }}
     };
 </script>
-<script src="{{ url_for('static', filename='game_notify.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='game_notify.js') }}?v=2" defer></script>

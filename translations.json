@@ -179,7 +179,12 @@
     "Question won’t load? Reload the page and answer each question once.": "¿La pregunta no carga? Recarga la página y responde cada pregunta una vez.",
     "No questions? The host’s quiz key may be missing — tell the host.": "¿Sin preguntas? Quizá falte la clave del cuestionario del anfitrión — avísale.",
     "Link won’t open? Check Tailscale is on, same account, host app running, and this port present:": "¿El enlace no abre? Comprueba que Tailscale esté activo, misma cuenta, app del anfitrión en marcha y este puerto presente:",
-    "No password mail? Check spam or ask the host to check the mail setup.": "¿Sin correo de contraseña? Revisa el spam o pide al anfitrión que revise el correo."
+    "No password mail? Check spam or ask the host to check the mail setup.": "¿Sin correo de contraseña? Revisa el spam o pide al anfitrión que revise el correo.",
+    "FamQuiz logo": "Logotipo de FamQuiz",
+    "Player avatar": "Avatar del jugador",
+    "Main navigation": "Navegacion principal",
+    "Skip to main content": "Saltar al contenido principal",
+    "Please enable JavaScript to use FamQuiz.": "Por favor activa JavaScript para usar FamQuiz."
   },
   "hi": {
     "How to use": "उपयोग कैसे करें",
@@ -360,7 +365,12 @@
     "Question won’t load? Reload the page and answer each question once.": "प्रश्न लोड नहीं हो रहा? पेज रीलोड करें और हर प्रश्न का उत्तर एक बार दें।",
     "No questions? The host’s quiz key may be missing — tell the host.": "प्रश्न नहीं? होस्ट की क्विज़ कुंजी गायब हो सकती है — होस्ट को बताएँ।",
     "Link won’t open? Check Tailscale is on, same account, host app running, and this port present:": "लिंक नहीं खुल रहा? देखें कि Tailscale चालू है, खाता एक ही है, होस्ट ऐप चल रहा है, और यही पोर्ट मौजूद है:",
-    "No password mail? Check spam or ask the host to check the mail setup.": "पासवर्ड मेल नहीं? स्पैम देखें या होस्ट से मेल सेटअप जाँचने को कहें।"
+    "No password mail? Check spam or ask the host to check the mail setup.": "पासवर्ड मेल नहीं? स्पैम देखें या होस्ट से मेल सेटअप जाँचने को कहें।",
+    "FamQuiz logo": "FamQuiz लोगो",
+    "Player avatar": "खिलाड़ी का अवतार",
+    "Main navigation": "मुख्य नेविगेशन",
+    "Skip to main content": "मुख्य सामग्री पर जाएँ",
+    "Please enable JavaScript to use FamQuiz.": "FamQuiz चलाने के लिए क्री जाएँ JavaScript चालू करें।"
   },
   "zh_Hans": {
     "How to use": "使用方法",
@@ -541,6 +551,11 @@
     "Question won’t load? Reload the page and answer each question once.": "题目加载不出来？刷新页面，每题只回答一次。",
     "No questions? The host’s quiz key may be missing — tell the host.": "没有题目？可能是房主缺少测验密钥——请告诉房主。",
     "Link won’t open? Check Tailscale is on, same account, host app running, and this port present:": "链接打不开？检查 Tailscale 是否开启、账号是否一致、房主应用是否运行，以及是否存在这个端口：",
-    "No password mail? Check spam or ask the host to check the mail setup.": "没收到密码邮件？检查垃圾邮件，或请房主检查邮件设置。"
+    "No password mail? Check spam or ask the host to check the mail setup.": "没收到密码邮件？检查垃圾邮件，或请房主检查邮件设置。",
+    "FamQuiz logo": "FamQuiz 标志",
+    "Player avatar": "玩家头像",
+    "Main navigation": "主导航",
+    "Skip to main content": "跳到主要内容",
+    "Please enable JavaScript to use FamQuiz.": "请启用 JavaScript 以使用 FamQuiz。"
   }
 }

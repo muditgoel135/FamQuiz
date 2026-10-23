@@ -36,6 +36,11 @@ requires_key = pytest.mark.skipif(
     reason="OLLAMA_API_KEY not configured; live test needs real credits.",
 )
 
+# Module-wide marker: every test here spends REAL cloud credits and waits
+# on wall-clock retries. ``pytest.ini`` deselects "live" by default, so a
+# plain run is always free; run them with ``pytest -m live``.
+pytestmark = [pytest.mark.live, pytest.mark.slow]
+
 
 def _profile(subject="Space", difficulty="easy", language="English"):
     """

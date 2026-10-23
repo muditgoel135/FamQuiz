@@ -1332,3 +1332,51 @@ body.theme-dark .game-score {
     cursor: pointer;
     padding: 2px 6px;
 }
+
+/* ---------------------------------------------------------------------------
+   Accessibility helpers
+   --------------------------------------------------------------------------- */
+
+/* Keyboard users can jump straight to the page content. */
+.skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 2000;
+    padding: 8px 14px;
+    background: #fff;
+    color: #0b4f8a;
+    border-radius: 0 0 6px 0;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    left: 0;
+}
+
+/* Every interactive control must show a visible focus ring. */
+.game-notify-join:focus-visible,
+.game-notify-dismiss:focus-visible,
+.home-start:focus-visible,
+.auth-btn:focus-visible,
+.game-quit:focus-visible,
+.home-avatar:focus-visible,
+.skip-link:focus-visible {
+    outline: 3px solid #0b4f8a;
+    outline-offset: 2px;
+}
+
+/* Respect the user's "reduce motion" setting. */
+@media (prefers-reduced-motion: reduce) {
+    .game-notify-dot {
+        animation: none !important;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

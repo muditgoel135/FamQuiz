@@ -323,7 +323,10 @@ class TestGuideLeaderboardAnon:
     def test_notify_anon(self, client):
         for path in ("/", "/guide", "/leaderboard"):
             html = client.get(path).data.decode()
-            assert 'role="alert"' in html
+            # The banner is a polite status region (role="alert" would be
+            # assertive and must not wrap the Join/Dismiss buttons).
+            assert 'id="game-notify"' in html
+            assert 'role="status"' in html
             assert 'data-gameplay-url="/gameplay"' in html
             assert 'data-events-url="/api/game/events"' in html
             assert 'data-join-url="/api/game/join"' in html
@@ -484,7 +487,7 @@ class TestTranslationsStrict:
             text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
             for match in pattern.findall(text):
                 norm = " ".join(match.split())
-                if norm in ("FamQuiz", "points", "pts"):
+                if norm in ("FamQuiz",):
                     continue
                 # app.py validation strings are English sources; allow if in
                 # catalog OR clearly a code-internal string (contains paren).

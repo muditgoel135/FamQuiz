@@ -1109,8 +1109,12 @@ class TestTranslatedMailUtil:
 
         monkeypatch.setattr("flask_security.mail_util.MailUtil.send_mail", _boom)
         with app.test_request_context("/"):
-            with pytest.raises(RuntimeError):
-                self._util().send_mail("t", "s", "a@b.com", "x", "b", "h")
+            # A broken SMTP account must not turn a password reset into
+            # a 500 for the player, so the failure is swallowed...
+            assert (
+                self._util().send_mail("t", "s", "a@b.com", "x", "b", "h") is None
+            )
+            # ...and the locale is still restored.
             assert g.get("email_locale") is None
 
 

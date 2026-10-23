@@ -17,6 +17,10 @@ from email.utils import parseaddr
 
 import pytest
 
+# Module-wide marker: sends a REAL email and polls the Mailjet API for up
+# to 120s. ``pytest.ini`` deselects "live" by default; run with ``-m live``.
+pytestmark = [pytest.mark.live, pytest.mark.slow]
+
 MJ_MESSAGES_URL = "https://api.mailjet.com/v3/REST/message"
 DELIVERED_STATUSES = {"sent", "opened", "clicked"}
 

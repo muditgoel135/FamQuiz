@@ -109,6 +109,9 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+> Helpers who also want to run the test suite or build the exe: `pip install -r requirements-dev.txt`
+> (adds the test tools and the packager). The game itself does not need it.
+
 What you should see:
 
 * After line 1: no message, just a new prompt (it created a `.venv` folder).
@@ -149,7 +152,7 @@ Open `.env` only with a plain-text editor: Notepad on Windows, and on Mac use Te
 
 **If you skip this:** starting a quiz shows “Quiz questions aren’t turned on yet.” Everything else still opens.
 
-> For helpers only — optional check (uses 1–2 free credits): with `(.venv)` active run `pytest tests/test_ollama_live.py -q -k "20b"`. `passed` = works, `skipped` = no key found so the test did nothing, `failed` = copy-paste error.
+> For helpers only — optional check (uses 1–2 free credits): with `(.venv)` active run `pytest -m live tests/test_ollama_live.py -q -k "20b"`. `passed` = works, `skipped` = no key found so the test did nothing, `failed` = copy-paste error.
 
 ## 5. Play with far-away family with Tailscale (detailed, beginner)
 
@@ -212,7 +215,7 @@ Open `.env` only with a plain-text editor: Notepad on Windows, and on Mac use Te
 
 **If skipped:** mails are not sent and you see a warning in the window, app still runs.
 
-> For helpers only — optional check (sends 1 real mail to your sender address): with `(.venv)` active run `pytest tests/test_live_mail.py -q`. `passed` = works, `skipped` = keys missing so it did nothing, `failed` = copy-paste error.
+> For helpers only — optional check (sends 1 real mail to your sender address): with `(.venv)` active run `pytest -m live tests/test_live_mail.py -q`. `passed` = works, `skipped` = keys missing so it did nothing, `failed` = copy-paste error.
 
 ## 7. Run + play every day
 
@@ -233,8 +236,8 @@ The game, questions, and emails work in English, Mandarin Chinese, Spanish, and 
 
 No need to run this to play.
 
-* Quick check (free, no mail/credits): `pytest tests/ -q --ignore=tests/test_ollama_live.py --ignore=tests/test_live_mail.py` → you should see `120 passed`.
-* Live checks (use credits / send a real mail): the two commands in Sections 4 and 6.
+* Quick check (free, no mail/credits): `pytest tests/ -q` → the live tests are skipped automatically, so this never spends credits.
+* Live checks (use credits / send a real mail): `pytest -m live` — see Sections 4 and 6.
 * Size: the code is about 10 MB. It uses about 100 MB memory while running — fine on any recent laptop.
 
 ## If something goes wrong
@@ -260,7 +263,7 @@ Still stuck? Take a photo of the red text in the instruction window. Cover any l
 * `routes.py` – pages + quiz/game/lobby/countdown logic.
 * `templates/` + `static/` – light-blue theme and game banner.
 * `translations.json` – Spanish, Hindi, Simplified Chinese texts.
-* `tests/` – 120 fast checks + live Ollama/Mailjet checks (skipped without keys).
+* `tests/` – fast checks that never spend credits, plus live Ollama/Mailjet checks marked `live` (skipped unless you run `pytest -m live`).
 
 Local only: `site.db` + `.env` stay on the main computer. Don’t share them. Use your computer password and disk encryption (BitLocker on Windows / FileVault on Mac).
 
@@ -334,10 +337,12 @@ Ollama uses the free default model. Any mail company works with the same `MAIL_*
 Family can skip this.
 
 ```bash
-pytest tests/ -q --ignore=tests/test_ollama_live.py --ignore=tests/test_live_mail.py
+pytest tests/ -q
 ```
 
-You should see `120 passed`. Live commands in Sections 4/6 spend credits/mail. Code is ~10 MB. Peek (main computer only):
+All of these are free (no credits, no mail sent). The live tests that spend
+credits or send real mail are marked `live` and skipped by default — run
+them explicitly with `pytest -m live`. Code is ~10 MB. Peek (main computer only):
 
 ```bash
 sqlite3 instance/site.db "select email,best_score,total_wins from user;"
@@ -360,49 +365,98 @@ Open the instruction window inside the `FamQuiz` folder (Section 2) and make sur
 **Windows:**
 
 ```powershell
-python -m pip install "pyinstaller>=6.15"
+python -m pip install -r requirements-dev.txt
 ```
 
 **Mac / Linux:**
 
 ```bash
-python3 -m pip install "pyinstaller>=6.15"
+python3 -m pip install -r requirements-dev.txt
 ```
 
-What you should see: the last line says `Successfully installed pyinstaller-6.x.x`. This project's Python needs PyInstaller **6.15 or newer**. If you see a red error instead, you are not in the right folder or `(.venv)` is missing — recheck Sections 2 and 3.
+What you should see: the last line says `Successfully installed pyinstaller-6.x.x` (and the test tools). This project's Python needs PyInstaller **6.15 or newer**. If you see a red error instead, you are not in the right folder or `(.venv)` is missing — recheck Sections 2 and 3.
 
 ### 11.2 Create two small text files in the `FamQuiz` folder
 
-Both go **next to `app.py`** (not inside any subfolder). Nothing in `app.py`, `routes.py` or any other game file changes — these two files are only for packaging. After adding them you can re-run the quick checks any time (`pytest tests/ -q --ignore=tests/test_ollama_live.py --ignore=tests/test_live_mail.py` → still `120 passed`).
+Both go **next to `app.py`** (not inside any subfolder). Nothing in `app.py`, `routes.py` or any other game file changes — these two files are only for packaging. After adding them you can re-run the quick checks any time (`pytest tests/ -q` → still all green).
 
 **File 1 — `run_famquiz.py`** (the small starter for the packaged game: it keeps your `.env` and the scores database in the folder you put the exe in, instead of inside the exe's throw-away unpack space — without it, scores would vanish on every close). New file, paste exactly:
 
 ```python
+"""Packaged entry point for FamQuiz.
+
+Keeps ``.env`` and the scores database next to ``FamQuiz.exe`` (not in the
+self-extracting temp folder, which is deleted on exit), so scores survive
+a restart.
+
+The module body is side-effect free on import: everything happens inside
+:func:`main`. That keeps ``import app`` *after* the database URI is set
+(``app.BASE_CONFIG`` is frozen at import time) while letting the test
+suite import this file without starting a server.
+"""
+
 import os
 import sys
 
-# In a frozen exe, place .env + database next to FamQuiz.exe (not in the
-# self-extracting temp folder, which is deleted on exit).
-if getattr(sys, "frozen", False):
-    base_dir = os.path.dirname(sys.executable)
-else:
-    base_dir = os.path.dirname(os.path.abspath(__file__))
 
-from dotenv import load_dotenv
+def base_dir():
+    """
+    Return the folder that holds ``.env``, the database and the exe.
 
-load_dotenv(os.path.join(base_dir, ".env"))
+    :return: Absolute path of the base folder.
+    :rtype: str
+    """
 
-instance = os.path.join(base_dir, "instance")
-os.makedirs(instance, exist_ok=True)
-os.environ["SQLALCHEMY_DATABASE_URI"] = "sqlite:///" + os.path.join(
-    instance, "site.db"
-).replace("\\", "/")
+    if getattr(sys, "frozen", False):
+        # In a frozen exe, place .env + database next to FamQuiz.exe.
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
 
-import app as app_module
 
-port = int(os.getenv("PORT", 5000))
-app_module._print_lan_urls(port)
-app_module.app.run(debug=False, host="0.0.0.0", port=port)
+def prepare_env(base):
+    """
+    Load ``.env`` and point the database at ``<base>/instance/site.db``.
+
+    Must run *before* ``app`` is imported: ``app.BASE_CONFIG`` reads
+    ``SQLALCHEMY_DATABASE_URI`` once, at import time.
+
+    :param base: The base folder that holds .env and the instance folder.
+    :type base: str
+    :return: The database URI that was set.
+    :rtype: str
+    """
+
+    from dotenv import load_dotenv
+
+    load_dotenv(os.path.join(base, ".env"))
+
+    instance = os.path.join(base, "instance")
+    os.makedirs(instance, exist_ok=True)
+    uri = "sqlite:///" + os.path.join(instance, "site.db").replace("\\", "/")
+    os.environ["SQLALCHEMY_DATABASE_URI"] = uri
+    return uri
+
+
+def main():
+    """
+    Start the FamQuiz server (LAN-visible, never in debug mode).
+
+    :return: None.
+    :rtype: None
+    """
+
+    prepare_env(base_dir())
+
+    import app as app_module
+
+    port = int(os.getenv("PORT", 5000))
+    app_module._print_lan_urls(port)
+    # Keep 0.0.0.0 for LAN + Tailscale sharing; never debug on LAN (RCE).
+    app_module.app.run(debug=False, host="0.0.0.0", port=port)
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 **File 2 — `FamQuiz.spec`** (the build recipe: what goes inside the one file — templates, game theme and style files, all four UI languages — and what stays out, like the test files; it also packs Flask's login library parts that plain scanning misses). New file, paste exactly:

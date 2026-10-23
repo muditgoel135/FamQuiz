@@ -57,7 +57,14 @@ def _mock1(monkeypatch):
     monkeypatch.setattr(app_module, "get_ollama_client", lambda: _F())
 
 
-class TestRefreshDirect:
+class TestExpireSweep:
+    """The wall-clock sweep that moves games through their states.
+
+    (``_expire_stale_games`` is the only place the lobby clock is
+    applied; it used to have a twin, ``_refresh_game_status``, that no
+    route ever called.)
+    """
+
     def _new(self, app, **kw):
         from app import GameSession
 
@@ -71,90 +78,67 @@ class TestRefreshDirect:
         with app.app_context():
             return db.session.get(GameSession, gid).status
 
+    def _sweep(self, app):
+        from routes import _expire_stale_games
+
+        with app.app_context():
+            _expire_stale_games()
+
     def test_finished_cancelled_untouched(self, app, monkeypatch):
         now = time.time()
         monkeypatch.setattr("routes.time.time", lambda: now)
-        from routes import _refresh_game_status
 
         for status in ("finished", "cancelled"):
             gid = self._new(
                 app, status=status, starts_at=now - 100, expires_at=now - 10
             )
-            with app.app_context():
-                game = db.session.get(GameSession, gid)
-                assert _refresh_game_status(game).status == status
+            self._sweep(app)
+            assert self._status(app, gid) == status
 
     def test_lobby_to_active(self, app):
-        from routes import _refresh_game_status
-
         now = time.time()
         gid = self._new(app, status="lobby", starts_at=now - 1, expires_at=now + 1000)
-        with app.app_context():
-            game = db.session.get(GameSession, gid)
-            assert _refresh_game_status(game).status == "active"
+        self._sweep(app)
         assert self._status(app, gid) == "active"
 
     def test_future_stays(self, app):
-        from routes import _refresh_game_status
-
         now = time.time()
         gid = self._new(app, status="lobby", starts_at=now + 100, expires_at=now + 1000)
-        with app.app_context():
-            game = db.session.get(GameSession, gid)
-            assert _refresh_game_status(game).status == "lobby"
+        self._sweep(app)
+        assert self._status(app, gid) == "lobby"
 
     def test_expiry_wins(self, app):
-        from routes import _refresh_game_status
-
         now = time.time()
         for status in ("lobby", "active"):
             gid = self._new(
                 app, status=status, starts_at=now - 1000, expires_at=now - 1
             )
-            with app.app_context():
-                game = db.session.get(GameSession, gid)
-                assert _refresh_game_status(game).status == "finished"
+            self._sweep(app)
+            assert self._status(app, gid) == "finished"
 
     def test_active_expires(self, app):
-        from routes import _refresh_game_status
-
         now = time.time()
         gid = self._new(app, status="active", starts_at=now - 1000, expires_at=now - 1)
-        with app.app_context():
-            game = db.session.get(GameSession, gid)
-            assert _refresh_game_status(game).status == "finished"
+        self._sweep(app)
+        assert self._status(app, gid) == "finished"
 
-    def test_zero_and_string(self, app):
-        from routes import _refresh_game_status
-
+    def test_zero_timestamps_expire(self, app):
+        """A game with no timestamps at all is finished immediately."""
         gid = self._new(app, status="lobby", starts_at=0, expires_at=0)
-        with app.app_context():
-            game = db.session.get(GameSession, gid)
-            assert _refresh_game_status(game).status == "finished"
-        # Garbage strings cannot be persisted (Float column rejects them),
-        # so exercise the float() fallback with a transient object instead.
-        with app.app_context():
-            transient = GameSession(status="lobby")
-            transient.starts_at = "bad"
-            transient.expires_at = "bad"
-            assert _refresh_game_status(transient).status == "finished"
+        self._sweep(app)
+        assert self._status(app, gid) == "finished"
 
-    def test_expire_stale_mixed(self, app):
-        from routes import _expire_stale_games
-
+    def test_expire_stale_mixed(self, app, multiple_live_games):
         now = time.time()
         g1 = self._new(app, status="lobby", starts_at=now - 1000, expires_at=now - 1)
         g2 = self._new(app, status="lobby", starts_at=now - 1, expires_at=now + 1000)
         g3 = self._new(app, status="finished", starts_at=now - 1000, expires_at=now - 1)
-        with app.app_context():
-            _expire_stale_games()
+        self._sweep(app)
         assert self._status(app, g1) == "finished"
         assert self._status(app, g2) == "active"
         assert self._status(app, g3) == "finished"
 
     def test_expire_skips_invalid(self, app, monkeypatch):
-        from routes import _expire_stale_games
-
         # Float columns reject garbage at INSERT, so the unparsable branch
         # is only reachable in-memory. Verify the sweeper tolerates a
         # transient bad row mixed with a real one without raising.
@@ -163,8 +147,7 @@ class TestRefreshDirect:
         transient = GameSession(status="lobby")
         transient.starts_at = "bad"
         transient.expires_at = "bad"
-        with app.app_context():
-            _expire_stale_games()  # must not raise
+        self._sweep(app)  # must not raise
         with app.app_context():
             assert db.session.get(GameSession, gid).status == "lobby"
 

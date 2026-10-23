@@ -4,6 +4,8 @@ import json
 import os
 import time
 
+import pytest
+
 from app import MAX_QUIZ_QUESTIONS, GameSession, db  # type: ignore
 
 BANNER_KEYS = [
@@ -427,6 +429,7 @@ class TestGameStartDefaults:
 
 
 class TestSharedVisibility:
+    @pytest.mark.slow
     def test_all_users_see_same_game(self, client, app, existing_user):
         """Verify all users see same game.
 
@@ -562,6 +565,7 @@ class TestGameEventsStream:
         assert resp.headers.get("Cache-Control") == "no-cache"
         assert resp.headers.get("X-Accel-Buffering") == "no"
 
+    @pytest.mark.slow
     def test_stream_terminates_when_game_ends(self, client, app, existing_user):
         """Verify stream terminates when game ends.
 

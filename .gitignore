@@ -181,3 +181,9 @@ cython_debug/
 
 # Visual Studio Code
 .vscode/
+
+# FamQuiz local files
+site.db
+site.db-wal
+site.db-shm
+*.spec.bak

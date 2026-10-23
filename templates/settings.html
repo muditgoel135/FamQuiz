@@ -9,14 +9,18 @@
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=2">
 </head>
 
 <body class="{{ theme_class }}">
     {% include 'nav.html' %}
     {% include 'game_notify.html' %}
 
-    <main class="settings-main">
+    <noscript>
+        <div class="alert alert-warning" role="alert">{{ _('Please enable JavaScript to use FamQuiz.') }}</div>
+    </noscript>
+    <main id="main" class="settings-main">
+        <h1 class="visually-hidden">{{ _('Settings') }}</h1>
         <div id="settings-error" class="settings-alert settings-alert-error" role="alert" hidden></div>
         <div id="settings-ok" class="settings-alert settings-alert-ok" role="status" hidden></div>
 

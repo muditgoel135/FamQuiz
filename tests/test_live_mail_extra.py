@@ -22,6 +22,11 @@ needs_mail = pytest.mark.skipif(
     _needs_creds(), reason="MAIL_SERVER/MAIL_PASSWORD not configured."
 )
 
+# Module-wide marker: sends REAL emails and polls the Mailjet API for up
+# to 120s each. ``pytest.ini`` deselects "live" by default.
+# The no-spend body smoke test lives in tests/test_mail_bodies.py.
+pytestmark = [pytest.mark.live, pytest.mark.slow]
+
 
 def _live_app(tmp_path, name):
     from app import create_app, db
@@ -134,19 +139,3 @@ def test_forgot_spanish_live(tmp_path):
         sent_after,
     )
     assert ok, f"no delivered Spanish reset to {recipient}: {detail}"
-
-
-def test_txt_html_smoke_no_spend(client, app, existing_user):
-    """No-spend link: live delivery proves acceptance, this proves bodies."""
-    from app import User, db, mail
-
-    with app.app_context():
-        user = User.query.filter_by(email=existing_user["email"]).one()
-        user.language = "Spanish"
-        db.session.commit()
-    with mail.record_messages() as outbox:
-        client.post("/reset", data={"email": existing_user["email"]})
-    assert len(outbox) == 1
-    assert outbox[0].body and outbox[0].html
-    assert "Hola," in outbox[0].body
-    assert "Hola," in outbox[0].html

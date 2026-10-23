@@ -711,6 +711,9 @@ class TestQuizPowerup:
         assert resp.status_code == 409
 
         _start_mocked_quiz(client, monkeypatch, n=1)
+        # No power-up may be offered: the offer is rolled at random, and
+        # a "double" roll would make the request below succeed.
+        monkeypatch.setattr(app_module.random, "random", lambda: 1.0)
         client.get("/api/quiz/state")
         # Nothing offered -> any kind rejected; wrong kind rejected.
         assert (

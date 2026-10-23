@@ -10,6 +10,7 @@ import os
 import random
 import time
 from typing import Any
+from uuid import uuid4
 
 from flask import (
     Response,
@@ -20,6 +21,7 @@ from flask import (
     stream_with_context,
 )
 from flask_security import current_user, login_required
+from sqlalchemy.exc import IntegrityError
 
 from app import (
     BASE_POINTS,
@@ -40,6 +42,7 @@ from app import (
     SPEED_BONUS_POINTS,
     SUPPORTED_LOCALES,
     TRANSLATIONS,
+    FinishedQuiz,  # type: ignore
     GameSession,  # type: ignore
     QuizConfigError,
     QuizGenerationError,
@@ -553,6 +556,12 @@ def account_delete():
             for g in GameSession.query.filter_by(created_by_id=user_id).all():
                 if g.status in ("lobby", "active"):
                     g.status = "cancelled"
+                # Drop the reference so no row points at a deleted user.
+                g.created_by_id = None
+            # Same for the banked-quiz ledger.
+            FinishedQuiz.query.filter_by(user_id=user_id).update(
+                {"user_id": None}, synchronize_session=False
+            )
             db.session.delete(user)
             db.session.commit()
         except Exception:
@@ -777,6 +786,9 @@ def quiz_generate():
         # Binds this quiz to the live game (or None when solo): a quiz
         # from an older lobby can never resume under a new countdown.
         "game_id": _lobby.id if _lobby is not None else None,
+        # Idempotency key for quiz_finish: a second tab (or a replayed
+        # session cookie) must not bank the same game twice.
+        "quiz_token": uuid4().hex,
     }
     session.pop("last_result", None)
     public = [
@@ -1081,6 +1093,34 @@ def quiz_finish():
     if isinstance(total, bool) or not isinstance(total, (int, float)):
         return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
     me = current_user
+
+    # Claim the quiz token before touching the statistics. The unique
+    # constraint on FinishedQuiz.quiz_token makes banking a game
+    # idempotent: a second tab (or a replayed session cookie) that
+    # replays this request finds the token already taken and gets the
+    # cached summary instead of counting the game twice.
+    token = quiz.get("quiz_token")
+    if not isinstance(token, str) or not token:
+        token = uuid4().hex
+        quiz["quiz_token"] = token
+    try:
+        record = FinishedQuiz(
+            quiz_token=token,
+            user_id=me.id,
+            finished_at=time.time(),
+        )
+        db.session.add(record)
+        db.session.flush()
+    except IntegrityError:
+        db.session.rollback()
+        banked = FinishedQuiz.query.filter_by(quiz_token=token).one_or_none()
+        if banked is not None and banked.summary:
+            summary = json.loads(banked.summary)
+            session.pop("quiz", None)
+            session["last_result"] = summary
+            return jsonify(summary)
+        return jsonify({"error": "Quiz already saved."}), 409
+
     others_best = (
         db.session.query(_func.max(User.best_score)).filter(User.id != me.id).scalar()
         or 0
@@ -1102,7 +1142,6 @@ def quiz_finish():
             me.most_used_powerup = POWERUP_LABELS[top_kind]
         except (KeyError, ValueError, TypeError):
             return jsonify({"error": "Quiz state corrupted. Start a new game."}), 409
-    db.session.commit()
     summary = {
         "quiz_score": total,
         "total": len(questions),
@@ -1110,6 +1149,8 @@ def quiz_finish():
         "is_win": is_win,
         "powerups_used": used,
     }
+    record.summary = json.dumps(summary)
+    db.session.commit()
     session.pop("quiz", None)
     session["last_result"] = summary
     return jsonify(summary)
@@ -1120,42 +1161,6 @@ def quiz_finish():
 # The lobby shares only the start signal + config; questions stay
 # personalised per player via quiz_generate in their own language.
 # ---------------------------------------------------------------------------
-
-
-def _refresh_game_status(game):
-    """
-    Roll a lobby game forward by wall-clock; persist transitions.
-
-    Moves lobby -> active at starts_at and any game -> finished at
-    expires_at.
-
-    :param game: The GameSession row to refresh.
-    :return: The same game, possibly with an updated status.
-    :rtype: GameSession
-    """
-
-    now = time.time()
-    if game.status in ("finished", "cancelled"):
-        return game
-
-    try:
-        expires = float(game.expires_at or 0)
-    except (TypeError, ValueError):
-        expires = 0
-
-    try:
-        starts = float(game.starts_at or 0)
-    except (TypeError, ValueError):
-        starts = 0
-
-    if now >= expires:
-        game.status = "finished"
-        db.session.commit()
-    elif now >= starts and game.status == "lobby":
-        game.status = "active"
-        db.session.commit()
-
-    return game
 
 
 def _expire_stale_games():
@@ -1345,7 +1350,22 @@ def game_start():
         created_at=now,
     )
     db.session.add(game)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # The partial unique index on live games rejected a second
+        # lobby: two devices pressed "Start" at the same moment.
+        db.session.rollback()
+        existing = _get_live_game()
+        return (
+            jsonify(
+                {
+                    "error": "A game is already live.",
+                    "game": _game_to_dict(existing) if existing is not None else None,
+                }
+            ),
+            409,
+        )
     return jsonify({"game": _game_to_dict(game)}), 201
 
 
@@ -1509,7 +1529,12 @@ def game_events():
                         yield ": heartbeat\n\n"
                 game = _get_live_game()
                 if game is None:
-                    # Already emitted end via game-none above; avoid double.
+                    # The game vanished between the snapshot and this
+                    # check (another device finished it). Tell the client
+                    # the stream ended: game_notify.js closes its
+                    # EventSource only on "event: end", so a silent exit
+                    # makes the browser reconnect every few seconds.
+                    yield "event: end\ndata: {}\n\n"
                     break
                 try:
                     exp = float(game.expires_at or 0)

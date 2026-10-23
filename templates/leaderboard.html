@@ -9,14 +9,15 @@
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=2">
 </head>
 
 <body class="{{ theme_class }}">
     {% include 'nav.html' %}
     {% include 'game_notify.html' %}
 
-    <main class="board-wrap d-flex flex-column">
+    <main id="main" class="board-wrap d-flex flex-column">
+        <h1 class="visually-hidden">{{ _('Leaderboard') }}</h1>
         {% if leaderboard %}
         <ol class="board-list list-unstyled d-flex flex-column mb-0" aria-label="{{ _('Leaderboard') }}">
             {% for entry in leaderboard %}

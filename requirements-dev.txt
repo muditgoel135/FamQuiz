@@ -1,0 +1,13 @@
+# Tooling for working on FamQuiz: running the tests, linting, and
+# building the one-file exe. The game itself does not need any of this.
+#
+#     pip install -r requirements.txt -r requirements-dev.txt
+#
+# pytest / pytest-cov / pytest-timeout  run the test suite
+# ruff                                 lint the code
+# pyinstaller                          build the one-file exe (Section 11)
+pytest==9.1.1
+pytest-cov==7.0.0
+pytest-timeout==2.4.0
+ruff==0.14.4
+pyinstaller==6.22.3

@@ -2,6 +2,8 @@
 
 import time
 
+import pytest
+
 from app import GameSession, db
 
 
@@ -259,28 +261,28 @@ class TestClockResidual:
             return game.id
 
     def test_active_future(self, app):
-        from routes import _refresh_game_status
+        from routes import _expire_stale_games
 
         now = time.time()
         gid = self._new(
             app, status="active", starts_at=now + 100, expires_at=now + 1000
         )
         with app.app_context():
-            assert (
-                _refresh_game_status(db.session.get(GameSession, gid)).status
-                == "active"
-            )
+            _expire_stale_games()
+        with app.app_context():
+            assert db.session.get(GameSession, gid).status == "active"
 
     def test_none_timestamps(self, app):
-        from routes import _refresh_game_status
+        """A game with no timestamps is finished by the sweeper."""
+        from routes import _expire_stale_games
 
+        gid = self._new(app, status="lobby", starts_at=0, expires_at=0)
         with app.app_context():
-            transient = GameSession(status="lobby")
-            transient.starts_at = None
-            transient.expires_at = None
-            assert _refresh_game_status(transient).status == "finished"
+            _expire_stale_games()
+        with app.app_context():
+            assert db.session.get(GameSession, gid).status == "finished"
 
-    def test_active_expired_sweep(self, app):
+    def test_active_expired_sweep(self, app, multiple_live_games):
         from routes import _expire_stale_games
 
         now = time.time()
@@ -398,6 +400,7 @@ class TestSecondUserConflict:
 
 
 class TestCancelVisibilityQuiz:
+    @pytest.mark.slow
     def test_visible_to_both(self, client, app, existing_user):
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 60})

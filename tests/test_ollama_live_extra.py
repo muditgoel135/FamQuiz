@@ -17,6 +17,10 @@ requires_key = pytest.mark.skipif(
     reason="OLLAMA_API_KEY not configured; live test needs real credits.",
 )
 
+# Module-wide marker: real cloud credits + wall-clock retries.
+# See tests/test_ollama_live.py for why this exists.
+pytestmark = [pytest.mark.live, pytest.mark.slow]
+
 
 def _profile(subject="Space", difficulty="easy", language="English", grade="Grade 5"):
     return SimpleNamespace(
