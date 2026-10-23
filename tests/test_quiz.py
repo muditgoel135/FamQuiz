@@ -1,9 +1,11 @@
 """Tests for Ollama quiz generation (POST /api/quiz/generate). All model calls are mocked."""
 
 import json
+import time as _time
 from types import SimpleNamespace
 
 import app as app_module
+import routes as routes_module
 from app import MAX_QUIZ_QUESTIONS
 
 
@@ -387,8 +389,6 @@ class TestGameplayData:
 # driven by patching the server-side started_at in the session.
 # ---------------------------------------------------------------------------
 
-import time as _time
-
 
 def _start_mocked_quiz(client, monkeypatch, n=2, **generate_kwargs):
     """
@@ -498,8 +498,8 @@ class TestQuizState:
 
         _login(client, existing_user)
         _start_mocked_quiz(client, monkeypatch, n=1)
-        monkeypatch.setattr(app_module.random, "random", lambda: 0.0)
-        monkeypatch.setattr(app_module.random, "choice", lambda seq: "fifty")
+        monkeypatch.setattr(routes_module.random, "random", lambda: 0.0)
+        monkeypatch.setattr(routes_module.random, "choice", lambda seq: "fifty")
         body = client.get("/api/quiz/state").get_json()
         assert body["powerup"] == "fifty"
 
@@ -713,7 +713,7 @@ class TestQuizPowerup:
         _start_mocked_quiz(client, monkeypatch, n=1)
         # No power-up may be offered: the offer is rolled at random, and
         # a "double" roll would make the request below succeed.
-        monkeypatch.setattr(app_module.random, "random", lambda: 1.0)
+        monkeypatch.setattr(routes_module.random, "random", lambda: 1.0)
         client.get("/api/quiz/state")
         # Nothing offered -> any kind rejected; wrong kind rejected.
         assert (

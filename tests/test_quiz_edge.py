@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 import app as app_module
+import routes as routes_module
 from app import MAX_QUIZ_QUESTIONS
 
 
@@ -308,8 +309,8 @@ class TestStateEdge:
     def test_second_call_stable(self, client, existing_user, monkeypatch):
         _login(client, existing_user)
         _start(client, monkeypatch, n=1)
-        monkeypatch.setattr(app_module.random, "random", lambda: 0.0)
-        monkeypatch.setattr(app_module.random, "choice", lambda seq: "fifty")
+        monkeypatch.setattr(routes_module.random, "random", lambda: 0.0)
+        monkeypatch.setattr(routes_module.random, "choice", lambda seq: "fifty")
         first = client.get("/api/quiz/state").get_json()
         with client.session_transaction() as sess:
             started = sess["quiz"]["started_at"]

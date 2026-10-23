@@ -561,9 +561,11 @@ class TestStateTamper:
 
     def test_no_offer_is_offered(self, client, existing_user, monkeypatch):
         """With power-ups enabled but no roll, no offer is made."""
+        import routes as routes_module
+
         _login(client, existing_user)
         _start(client, monkeypatch, n=1)
-        monkeypatch.setattr(app_module.random, "random", lambda: 1.0)
+        monkeypatch.setattr(routes_module.random, "random", lambda: 1.0)
         with client.session_transaction() as sess:
             sess["quiz"]["powerups_enabled"] = True
             sess["quiz"]["offered"] = None
