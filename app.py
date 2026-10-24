@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import sys as _sys
@@ -959,10 +960,8 @@ class TranslatedMailUtil(MailUtil):
         try:
             locale = _recipient_locale(recipient, kwargs.get("user"))
             subject = translate(subject, locale)
-            try:
+            with contextlib.suppress(Exception):
                 _g.email_locale = locale
-            except Exception:
-                pass
             try:
                 return super().send_mail(
                     template, subject, recipient, sender, body, html, **kwargs

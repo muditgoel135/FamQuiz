@@ -803,8 +803,7 @@ class TestSessionHelpers:
         }
         for bad in (5, -1, "0", None, True, 1.5):
             quiz = dict(base, index=bad)
-            with app.test_request_context("/"):
-                with pytest.raises(IndexError, match="out of range"):
+            with app.test_request_context("/"), pytest.raises(IndexError, match="out of range"):
                     app_module._public_state(quiz)
 
 

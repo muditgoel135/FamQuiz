@@ -301,7 +301,7 @@ class TestClockResidual:
         from routes import _expire_stale_games
 
         now = time.time()
-        gid = self._new(app, status="lobby", starts_at=now - 1000, expires_at=now - 1)
+        _gid = self._new(app, status="lobby", starts_at=now - 1000, expires_at=now - 1)
         rolled = {}
 
         def _boom():

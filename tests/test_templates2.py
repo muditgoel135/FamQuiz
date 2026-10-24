@@ -502,7 +502,8 @@ class TestTranslationsStrict:
         pattern = re.compile(r"_\(\s*['\"]([^'\"]+)['\"]\s*\)", re.DOTALL)
         missing = set()
         for rel in ["app.py", "routes.py"]:
-            text = open(os.path.join(ROOT, rel), encoding="utf-8").read()
+            with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
+                text = fh.read()
             for match in pattern.findall(text):
                 norm = " ".join(match.split())
                 if norm in ("FamQuiz",):
@@ -520,13 +521,15 @@ class TestTranslationsStrict:
         assert "Welcome Back!" in data["es"]
         combined = ""
         for rel in ["app.py", "routes.py"]:
-            combined += open(os.path.join(ROOT, rel), encoding="utf-8").read()
+            with open(os.path.join(ROOT, rel), encoding="utf-8") as fh:
+                combined += fh.read()
         for root, _d, files in os.walk(os.path.join(ROOT, "templates")):
             for name in files:
                 if name.endswith((".html", ".txt")):
-                    combined += open(
+                    with open(
                         os.path.join(root, name), encoding="utf-8", errors="ignore"
-                    ).read()
+                    ) as fh:
+                        combined += fh.read()
         assert "Welcome Back!" not in combined  # documents orphan key
         assert "Welcome!" in combined
 

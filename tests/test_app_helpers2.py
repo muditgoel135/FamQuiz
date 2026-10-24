@@ -383,12 +383,11 @@ class TestMailGFailures:
 
         monkeypatch.setattr(app_module, "_recipient_locale", lambda *a, **k: "es")
         monkeypatch.setattr("flask.render_template", lambda *a, **k: "rendered")
-        with app.test_request_context("/"):
-            with mock.patch.object(g, "get", side_effect=RuntimeError("down")):
-                assert (
-                    app_module.security_render_template("t", email="a@b.com")
-                    == "rendered"
-                )
+        with app.test_request_context("/"), mock.patch.object(g, "get", side_effect=RuntimeError("down")):
+            assert (
+                app_module.security_render_template("t", email="a@b.com")
+                == "rendered"
+            )
 
     def test_render_g_pop_raises(self, app, monkeypatch):
         from unittest import mock
@@ -397,12 +396,11 @@ class TestMailGFailures:
 
         monkeypatch.setattr(app_module, "_recipient_locale", lambda *a, **k: "es")
         monkeypatch.setattr("flask.render_template", lambda *a, **k: "rendered")
-        with app.test_request_context("/"):
-            with mock.patch.object(g, "pop", side_effect=RuntimeError("down")):
-                assert (
-                    app_module.security_render_template("t", email="a@b.com")
-                    == "rendered"
-                )
+        with app.test_request_context("/"), mock.patch.object(g, "pop", side_effect=RuntimeError("down")):
+            assert (
+                app_module.security_render_template("t", email="a@b.com")
+                == "rendered"
+            )
 
     def test_mailutil_g_pop_raises(self, app, monkeypatch):
         from unittest import mock
@@ -416,16 +414,14 @@ class TestMailGFailures:
             lambda self, *a, **k: "ok",
         )
         util = object.__new__(app_module.TranslatedMailUtil)
-        with app.test_request_context("/"):
-            with mock.patch.object(g, "pop", side_effect=RuntimeError("down")):
-                assert util.send_mail("t", "s", "a@b.com", "x", "b", "h") == "ok"
+        with app.test_request_context("/"), mock.patch.object(g, "pop", side_effect=RuntimeError("down")):
+            assert util.send_mail("t", "s", "a@b.com", "x", "b", "h") == "ok"
 
 
 class TestPublicStateResiduals:
     def test_missing_questions(self, app):
-        with app.test_request_context("/"):
-            with pytest.raises(IndexError, match="out of range"):
-                app_module._public_state({"index": 0})
+        with app.test_request_context("/"), pytest.raises(IndexError, match="out of range"):
+            app_module._public_state({"index": 0})
 
     def test_missing_question_key(self, app):
         with app.test_request_context("/"), pytest.raises(KeyError):
@@ -503,7 +499,7 @@ class TestCreateAppResiduals:
         assert flask_app.config.get("WTF_CSRF_ENABLED", True) is not False
 
     def test_header_preservation(self, app):
-        @app.route("/_hdr")  # noqa: Flask route in test
+        @app.route("/_hdr")  # Flask route in test
         def _hdr():
             from flask import Response
 
@@ -701,7 +697,8 @@ class TestGlobalAppMain:
         assert app_module.app.config["SECURITY_REGISTERABLE"] is True
 
     def test_main_source(self):
-        src = open("app.py", encoding="utf-8").read()
+        with open("app.py", encoding="utf-8") as fh:
+            src = fh.read()
         assert 'app.run(debug=False, host="0.0.0.0"' in src
         assert '_port = int(os.getenv("PORT", 5000))' in src
         assert '_sys.modules.setdefault("app"' in src

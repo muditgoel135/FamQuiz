@@ -5,6 +5,7 @@ Registered via :func:`register_routes`, preserving the original endpoint
 names so ``url_for('homepage')`` etc. keep working in templates and tests.
 """
 
+import contextlib
 import json
 import os
 import random
@@ -486,10 +487,8 @@ def settings_save():
     current_user.status = status
     db.session.commit()
     # Full UI plan: apply new UI language immediately.
-    try:
+    with contextlib.suppress(Exception):
         session["locale"] = LANGUAGE_TO_LOCALE.get(language, "en")
-    except Exception:
-        pass
     return jsonify(
         {
             "ok": True,
@@ -1504,7 +1503,7 @@ def game_events():
         return {"type": kind, **data}
 
     if once:
-        body = "event: snapshot\ndata: %s\n\n" % json.dumps(_snapshot())
+        body = f"event: snapshot\ndata: {json.dumps(_snapshot())}\n\n"
         return Response(
             body,
             mimetype="text/event-stream",
@@ -1532,7 +1531,7 @@ def game_events():
 
         try:
             first = _snapshot()
-            yield "event: snapshot\ndata: %s\n\n" % json.dumps(first)
+            yield f"event: snapshot\ndata: {json.dumps(first)}\n\n"
             last = _dedup_key(first)
             idle = 0
             # Initial terminal snapshot ends immediately (finished test).
@@ -1545,7 +1544,7 @@ def game_events():
                 encoded = _dedup_key(snap)
                 if encoded != last:
                     last = encoded
-                    yield "event: update\ndata: %s\n\n" % json.dumps(snap)
+                    yield f"event: update\ndata: {json.dumps(snap)}\n\n"
                     idle = 0
                     if snap.get("type") in ("game-none",):
                         yield "event: end\ndata: {}\n\n"
@@ -1574,10 +1573,8 @@ def game_events():
             # Browser disconnected: stop DB polling, free the worker.
             return
         except Exception:
-            try:
+            with contextlib.suppress(Exception):
                 yield "event: end\ndata: {}\n\n"
-            except Exception:
-                pass
             return
 
     return Response(

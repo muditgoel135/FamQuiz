@@ -1135,7 +1135,7 @@ def _mock_questions(monkeypatch, n=2):
                 {
                     "questions": [
                         {
-                            "question": "Q%d?" % i,
+                            "question": f"Q{i}?",
                             "options": ["A", "B", "C", "D"],
                             "answer_index": 0,
                         }

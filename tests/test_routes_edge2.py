@@ -175,9 +175,8 @@ class TestInjectThemeResidual:
             def is_authenticated(self):
                 raise RuntimeError("boom")
 
-        with app.test_request_context("/"):
-            with mock.patch.object(app_module, "current_user", _Boom()):
-                assert inject_theme() == {"theme_class": ""}
+        with app.test_request_context("/"), mock.patch.object(app_module, "current_user", _Boom()):
+            assert inject_theme() == {"theme_class": ""}
 
     def test_dark_all_pages(self, client, app, existing_user):
         from app import User

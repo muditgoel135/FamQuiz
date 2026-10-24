@@ -12,7 +12,6 @@ ignore = [
     "E501",   # line length is handled by the formatter, not the linter
     "B008",   # Flask route decorators call functions in the default args
     "SIM108", # ternaries are not always clearer
-    "UP038",
 ]
 
 [lint.per-file-ignores]
