@@ -1209,17 +1209,17 @@ def _expire_stale_games():
 
     dirty = False
 
-    for g in stale:
+    for game_session in stale:
         try:
-            expires = float(g.expires_at or 0)
-            starts = float(g.starts_at or 0)
+            expires = float(game_session.expires_at or 0)
+            starts = float(game_session.starts_at or 0)
         except (TypeError, ValueError):
             continue
-        if now >= expires and g.status != "finished":
-            g.status = "finished"
+        if now >= expires and game_session.status != "finished":
+            game_session.status = "finished"
             dirty = True
-        elif now >= starts and g.status == "lobby":
-            g.status = "active"
+        elif now >= starts and game_session.status == "lobby":
+            game_session.status = "active"
             dirty = True
 
     if dirty:

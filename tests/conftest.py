@@ -259,7 +259,7 @@ def sse_driver(monkeypatch):
 
         iterator = iter(script)
         monkeypatch.setattr(
-            routes_module, "_get_live_game", lambda: next(iterator, None)
+            routes_module, "_get_live_game", lambda **kwargs: next(iterator, None)
         )
         monkeypatch.setattr(routes_module.time, "sleep", lambda _s: None)
         response = client.get("/api/game/events", buffered=False)

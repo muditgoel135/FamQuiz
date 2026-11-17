@@ -10,7 +10,7 @@
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=3">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=2">
 </head>
 
 <body class="{{ theme_class }}">
@@ -510,7 +510,7 @@
                             } else {
                                 loadState();
                             }
-                        }, 500);
+                        }, 900);
                     })
                     .catch(function (err) {
                         answering = false;
