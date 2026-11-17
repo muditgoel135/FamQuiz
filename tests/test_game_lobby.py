@@ -446,7 +446,7 @@ class TestGameStartDefaults:
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
-        
+
         _login(client, existing_user)
         game = client.post("/api/game/start", json={"num_questions": 0}).get_json()[
             "game"
