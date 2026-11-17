@@ -16,6 +16,8 @@ from uuid import uuid4
 from flask import (
     Response,
     current_app,
+    g,
+    has_request_context,
     jsonify,
     render_template,
     request,
@@ -273,6 +275,7 @@ def homepage():
         default_num = 10
     default_num = max(1, min(default_num, MAX_QUIZ_QUESTIONS))
 
+    status_info = _setup_status()
     return render_template(
         "index.html",
         leaderboard=leaderboard,
@@ -287,8 +290,8 @@ def homepage():
         difficulty_options=["easy", "medium", "hard"],
         avatar_initial=avatar_initial,
         max_questions=MAX_QUIZ_QUESTIONS,
-        quiz_ready=_setup_status()["quiz_ready"],
-        mail_ready=_setup_status()["mail_ready"],
+        quiz_ready=status_info["quiz_ready"],
+        mail_ready=status_info["mail_ready"],
     )
 
 
@@ -1226,16 +1229,26 @@ def _expire_stale_games():
             db.session.rollback()
 
 
-def _get_live_game():
+def _clear_live_game_cache():
+    """Invalidate per-request live game memoization."""
+    if has_request_context() and hasattr(g, "_cached_live_game"):
+        delattr(g, "_cached_live_game")
+
+
+def _get_live_game(use_cache: bool = True):
     """
     Return the current lobby/active game, or None.
 
     Refreshes all lobby/active rows by wall-clock before returning the
     latest still-live one (older ghosts stay finished).
 
+    :param use_cache: Whether to use request-level caching. Set False for streaming loops.
     :return: The live GameSession, or None when no lobby is active.
     :rtype: GameSession or None
     """
+
+    if use_cache and has_request_context() and hasattr(g, "_cached_live_game"):
+        return g._cached_live_game
 
     _expire_stale_games()
     game = (
@@ -1244,8 +1257,9 @@ def _get_live_game():
         .first()
     )
 
-    if game is None:
-        return None
+    if use_cache and has_request_context():
+        g._cached_live_game = game
+
     return game
 
 
@@ -1378,6 +1392,7 @@ def game_start():
     db.session.add(game)
     try:
         db.session.commit()
+        _clear_live_game_cache()
     except IntegrityError:
         # The partial unique index on live games rejected a second
         # lobby: two devices pressed "Start" at the same moment.
@@ -1470,6 +1485,7 @@ def game_cancel():
         return jsonify({"error": "Only the starter can cancel this game."}), 403
     game.status = "cancelled"
     db.session.commit()
+    _clear_live_game_cache()
     return jsonify({"ok": True, "game": _game_to_dict(game)})
 
 
@@ -1495,7 +1511,7 @@ def game_events():
             plus game fields when live.
         :rtype: dict
         """
-        game = _get_live_game()
+        game = _get_live_game(use_cache=False)
         if game is None or game.status not in ("lobby", "active"):
             return {"type": "game-none", "active_game": None}
         data = _game_to_dict(game)
@@ -1553,7 +1569,7 @@ def game_events():
                     idle += 1
                     if idle % 7 == 0:
                         yield ": heartbeat\n\n"
-                game = _get_live_game()
+                game = _get_live_game(use_cache=False)
                 if game is None:
                     # The game vanished between the snapshot and this
                     # check (another device finished it). Tell the client

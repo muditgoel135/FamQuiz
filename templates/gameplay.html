@@ -5,11 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="theme-color" content="#c8ecfd">
     <title>FamQuiz</title>
     <link rel="icon" type="image/png" sizes="64x64" href="{{ url_for('static', filename='favicon.png') }}">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='bootstrap-css/bootstrap.min.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v=3">
 </head>
 
 <body class="{{ theme_class }}">
@@ -29,9 +30,13 @@
             </div>
         </header>
 
-        <section class="game-question d-flex align-items-center justify-content-center gap-3"
-            aria-label="{{ _('Question') }}">
-            <h1 class="flex-grow-1 text-center m-0" id="game-question-text" aria-live="polite">{{ _('Loading questions…') }}</h1>
+        <div class="game-timer-bar" id="game-timer-bar" aria-hidden="true">
+            <div class="game-timer-fill" id="game-timer-fill"></div>
+        </div>
+
+        <section class="game-question d-flex align-items-center justify-content-center gap-3 game-shimmer"
+            id="game-question-section" aria-label="{{ _('Question') }}">
+            <h1 class="flex-grow-1 text-center m-0" id="game-question-text" aria-live="polite"><span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" id="game-loading-spinner"></span>{{ _('Loading questions…') }}</h1>
         </section>
         <p id="game-hint" class="text-center fw-bold mb-0" role="status" aria-live="polite" hidden></p>
 
@@ -144,6 +149,114 @@
             var answering = false;
             var finishedQuiz = false;
 
+            // Web Audio sound synthesizer (zero file downloads, instant feedback)
+            var audioCtx = null;
+            function getAudioContext() {
+                try {
+                    if (!audioCtx) {
+                        var AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                        if (AudioContextClass) audioCtx = new AudioContextClass();
+                    }
+                    if (audioCtx && audioCtx.state === 'suspended') {
+                        audioCtx.resume();
+                    }
+                } catch (e) { /* audio unavailable */ }
+                return audioCtx;
+            }
+
+            function playSound(type) {
+                try {
+                    var ctx = getAudioContext();
+                    if (!ctx) return;
+                    var now = ctx.currentTime;
+                    if (type === "correct") {
+                        // Pleasant rising two-tone chime (587Hz D5 -> 880Hz A5)
+                        var osc1 = ctx.createOscillator();
+                        var gain1 = ctx.createGain();
+                        osc1.type = "sine";
+                        osc1.frequency.setValueAtTime(587.33, now);
+                        osc1.frequency.setValueAtTime(880.00, now + 0.1);
+                        gain1.gain.setValueAtTime(0.12, now);
+                        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+                        osc1.connect(gain1);
+                        gain1.connect(ctx.destination);
+                        osc1.start(now);
+                        osc1.stop(now + 0.35);
+                    } else if (type === "wrong") {
+                        // Gentle low tone (240Hz down to 160Hz)
+                        var osc2 = ctx.createOscillator();
+                        var gain2 = ctx.createGain();
+                        osc2.type = "triangle";
+                        osc2.frequency.setValueAtTime(240, now);
+                        osc2.frequency.exponentialRampToValueAtTime(160, now + 0.25);
+                        gain2.gain.setValueAtTime(0.15, now);
+                        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                        osc2.connect(gain2);
+                        gain2.connect(ctx.destination);
+                        osc2.start(now);
+                        osc2.stop(now + 0.25);
+                    } else if (type === "tick") {
+                        // Soft tick for timer alert (<5s)
+                        var osc3 = ctx.createOscillator();
+                        var gain3 = ctx.createGain();
+                        osc3.type = "sine";
+                        osc3.frequency.setValueAtTime(800, now);
+                        gain3.gain.setValueAtTime(0.06, now);
+                        gain3.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+                        osc3.connect(gain3);
+                        gain3.connect(ctx.destination);
+                        osc3.start(now);
+                        osc3.stop(now + 0.05);
+                    }
+                } catch (e) { /* ignore audio failure */ }
+            }
+
+            var timerFillEl = document.getElementById("game-timer-fill");
+            var timerInterval = null;
+            var timerStart = 0;
+            var timerDuration = 30000;
+            var alertPlayed = false;
+
+            function startTimerBar(limitMs) {
+                stopTimerBar();
+                timerDuration = limitMs || 30000;
+                timerStart = Date.now();
+                alertPlayed = false;
+                if (timerFillEl) {
+                    timerFillEl.style.width = "100%";
+                    timerFillEl.className = "game-timer-fill";
+                }
+                timerInterval = setInterval(function () {
+                    var elapsed = Date.now() - timerStart;
+                    var remaining = Math.max(0, timerDuration - elapsed);
+                    var pct = (remaining / timerDuration) * 100;
+                    if (timerFillEl) {
+                        timerFillEl.style.width = pct + "%";
+                        if (pct < 20) {
+                            timerFillEl.className = "game-timer-fill danger";
+                            if (!alertPlayed && remaining < 5000 && remaining > 1000) {
+                                alertPlayed = true;
+                                playSound("tick");
+                            }
+                        } else if (pct < 50) {
+                            timerFillEl.className = "game-timer-fill warning";
+                        } else {
+                            timerFillEl.className = "game-timer-fill";
+                        }
+                    }
+                    if (remaining <= 0) {
+                        stopTimerBar();
+                    }
+                }, 100);
+            }
+
+            function stopTimerBar() {
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+            }
+
             function fmt(n) {
                 return Number(n || 0).toLocaleString(document.documentElement.lang || "en-US");
             }
@@ -201,7 +314,17 @@
 
             function render(state) {
                 currentIndex = state.index;
-                questionEl.textContent = state.question;
+                startTimerBar(state.limit_ms || 30000);
+                var questionCard = document.getElementById("game-question-section");
+                if (questionCard) questionCard.classList.remove("game-shimmer");
+                var spinner = document.getElementById("game-loading-spinner");
+                if (spinner) spinner.style.display = "none";
+                questionEl.style.opacity = "0";
+                questionEl.style.transition = "opacity 0.15s ease";
+                setTimeout(function () {
+                    questionEl.textContent = state.question;
+                    questionEl.style.opacity = "1";
+                }, 100);
                 hintEl.hidden = true;
                 hintEl.textContent = "";
                 clearFeedback();
@@ -242,7 +365,12 @@
             }
 
             function staticBoard(questionText, hintText) {
+                stopTimerBar();
                 currentIndex = -1;
+                var questionCard = document.getElementById("game-question-section");
+                if (questionCard) questionCard.classList.remove("game-shimmer");
+                var spinner = document.getElementById("game-loading-spinner");
+                if (spinner) spinner.style.display = "none";
                 questionEl.textContent = questionText;
                 hintEl.hidden = !hintText;
                 hintEl.textContent = hintText || "";
@@ -357,6 +485,7 @@
             function answer(idx) {
                 if (answering || finishedQuiz || currentIndex < 0) return;
                 answering = true;
+                stopTimerBar();
                 setOptionsEnabled(false);
                 post("{{ url_for('quiz_answer') }}", {
                     option_index: idx,
@@ -367,7 +496,12 @@
                         if (!res.correct) {
                             optionBtns[idx].classList.add("wrong");
                         }
+                        playSound(res.correct ? "correct" : "wrong");
                         scoreEl.textContent = window.I18N.score + " " + fmt(res.quiz_score);
+                        scoreEl.classList.add("score-pop");
+                        setTimeout(function () {
+                            scoreEl.classList.remove("score-pop");
+                        }, 200);
                         setPowerups(null);
                         setTimeout(function () {
                             answering = false;
@@ -376,7 +510,7 @@
                             } else {
                                 loadState();
                             }
-                        }, 900);
+                        }, 500);
                     })
                     .catch(function (err) {
                         answering = false;
@@ -427,10 +561,12 @@
 
             function finishQuiz() {
                 finishedQuiz = true;
+                stopTimerBar();
                 setOptionsEnabled(false);
                 setPowerups(null);
                 post("{{ url_for('quiz_finish') }}", {})
                     .then(function (res) {
+                        playSound("correct");
                         questionEl.textContent = window.I18N.complete;
                         hintEl.textContent =
                             window.I18N.youScored + " " +

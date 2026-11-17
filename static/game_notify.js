@@ -35,6 +35,9 @@
     var pollTimer = null;
     var countdownTimer = null;
     var es = null;
+    var sseRetryDelay = 2000;
+    var MAX_SSE_RETRY = 30000;
+    var sseReconnectTimer = null;
 
     function csrfToken() {
         var m = document.querySelector('meta[name="csrf-token"]');
@@ -225,16 +228,35 @@
                 }
             } catch (e) { /* ignore malformed event */ }
         };
+        es.onopen = function () {
+            sseRetryDelay = 2000;
+            if (pollTimer) {
+                clearInterval(pollTimer);
+                pollTimer = null;
+            }
+        };
         es.addEventListener("snapshot", onData);
         es.addEventListener("update", onData);
         es.addEventListener("message", onData);
         es.addEventListener("end", function () {
             try { es.close(); } catch (e) { /* ignore */ }
+            es = null;
+            if (sseReconnectTimer) {
+                clearTimeout(sseReconnectTimer);
+                sseReconnectTimer = null;
+            }
         });
         es.onerror = function () {
             try { es.close(); } catch (e) { /* ignore */ }
             es = null;
             startPolling();
+            if (!sseReconnectTimer) {
+                sseReconnectTimer = setTimeout(function () {
+                    sseReconnectTimer = null;
+                    connectSSE();
+                    sseRetryDelay = Math.min(sseRetryDelay * 2, MAX_SSE_RETRY);
+                }, sseRetryDelay);
+            }
         };
     }
 

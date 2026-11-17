@@ -27,11 +27,13 @@ BANNER_KEYS = [
 
 
 def _login(client, existing_user):
-    """Log in the fixture user via POST /login.
+    """
+    Log in the fixture user via POST /login.
 
     :param client: The client fixture.
     :param existing_user: The existing_user fixture.
     """
+
     client.post(
         "/login",
         data={
@@ -42,12 +44,14 @@ def _login(client, existing_user):
 
 
 def _second_user(app):
-    """Create a second user for multi-user lobby tests.
+    """
+    Create a second user for multi-user lobby tests.
 
     :param app: The Flask app fixture.
     :return: Dict with the second user's email and password.
     :rtype: dict
     """
+
     from flask_security.utils import hash_password
 
     from app import user_datastore
@@ -62,41 +66,51 @@ def _second_user(app):
 
 class TestLobbyAuth:
     def test_status_requires_login(self, client):
-        """Verify status requires login.
+        """
+        Verify status requires login.
 
         :param client: The client fixture.
         """
+
         assert client.get("/api/game/status").status_code == 302
 
     def test_start_requires_login(self, client):
-        """Verify start requires login.
+        """
+        Verify start requires login.
 
         :param client: The client fixture.
         """
+
         assert client.post("/api/game/start", json={}).status_code == 401
 
     def test_join_requires_login(self, client):
-        """Verify join requires login.
+        """
+        Verify join requires login.
 
         :param client: The client fixture.
         """
+
         assert client.post("/api/game/join", json={}).status_code == 401
 
     def test_events_requires_login(self, client):
-        """Verify events requires login.
+        """
+        Verify events requires login.
 
         :param client: The client fixture.
         """
+
         assert client.get("/api/game/events?once=1").status_code == 302
 
 
 class TestGameStart:
     def test_start_creates_lobby(self, client, existing_user):
-        """Verify start creates lobby.
+        """
+        Verify start creates lobby.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.post(
             "/api/game/start",
@@ -118,11 +132,13 @@ class TestGameStart:
         assert game["join_url"] == "/gameplay"
 
     def test_start_clamps_values(self, client, existing_user):
-        """Verify start clamps values.
+        """
+        Verify start clamps values.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.post(
             "/api/game/start",
@@ -139,11 +155,13 @@ class TestGameStart:
         assert resp3.get_json()["game"]["lobby_seconds"] == 10
 
     def test_second_start_conflicts(self, client, existing_user):
-        """Verify second start conflicts.
+        """
+        Verify second start conflicts.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         assert client.post("/api/game/start", json={}).status_code == 201
         resp = client.post("/api/game/start", json={})
@@ -153,20 +171,24 @@ class TestGameStart:
 
 class TestGameStatusJoin:
     def test_empty_status(self, client, existing_user):
-        """Verify empty status.
+        """
+        Verify empty status.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         assert client.get("/api/game/status").get_json() == {"active_game": None}
 
     def test_status_shows_lobby(self, client, existing_user):
-        """Verify status shows lobby.
+        """
+        Verify status shows lobby.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 120})
         body = client.get("/api/game/status").get_json()
@@ -174,12 +196,14 @@ class TestGameStatusJoin:
         assert body["active_game"]["starts_in_ms"] > 0
 
     def test_lobby_goes_live_by_clock(self, client, app, existing_user):
-        """Verify lobby goes live by clock.
+        """
+        Verify lobby goes live by clock.
 
         :param client: The client fixture.
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 10})
         with app.app_context():
@@ -192,12 +216,14 @@ class TestGameStatusJoin:
         assert body["active_game"]["starts_in_ms"] == 0
 
     def test_expiry_finishes_game(self, client, app, existing_user):
-        """Verify expiry finishes game.
+        """
+        Verify expiry finishes game.
 
         :param client: The client fixture.
         :param app: The app fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         client.post("/api/game/start", json={"lobby_seconds": 10})
         with app.app_context():
@@ -209,11 +235,13 @@ class TestGameStatusJoin:
         assert client.get("/api/game/status").get_json() == {"active_game": None}
 
     def test_join_returns_config(self, client, existing_user):
-        """Verify join returns config.
+        """
+        Verify join returns config.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         client.post(
             "/api/game/start",
@@ -243,7 +271,8 @@ class TestGameStatusJoin:
 
 class TestGameCancel:
     def test_only_starter_can_cancel(self, client, app, existing_user):
-        """Verify only starter can cancel.
+        """
+        Verify only starter can cancel.
 
         :param client: The client fixture.
         :param app: The app fixture.
@@ -365,11 +394,13 @@ class TestLobbyI18n:
         assert "countdown" in html.lower() or "cuenta atr" in html.lower()
 
     def test_notifier_on_all_pages(self, client, existing_user):
-        """Verify notifier on all pages.
+        """
+        Verify notifier on all pages.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         for path in ("/guide", "/leaderboard"):
             assert 'id="game-notify"' in client.get(path).data.decode(), path
         _login(client, existing_user)
@@ -379,11 +410,13 @@ class TestLobbyI18n:
 
 class TestGameStartDefaults:
     def test_empty_body_uses_defaults(self, client, existing_user):
-        """Verify empty body uses defaults.
+        """
+        Verify empty body uses defaults.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         game = client.post("/api/game/start", json={}).get_json()["game"]
         assert game["num_questions"] == 10
@@ -392,11 +425,13 @@ class TestGameStartDefaults:
         assert game["lobby_seconds"] == 300
 
     def test_non_json_body_uses_defaults(self, client, existing_user):
-        """Verify non json body uses defaults.
+        """
+        Verify non json body uses defaults.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+
         _login(client, existing_user)
         resp = client.post(
             "/api/game/start", data="not-json", content_type="text/plain"
@@ -405,11 +440,13 @@ class TestGameStartDefaults:
         assert resp.get_json()["game"]["lobby_seconds"] == 300
 
     def test_zero_questions_falls_back_to_default(self, client, existing_user):
-        """Verify zero questions falls back to default.
+        """
+        Verify zero questions falls back to default.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         """
+        
         _login(client, existing_user)
         game = client.post("/api/game/start", json={"num_questions": 0}).get_json()[
             "game"
@@ -1207,7 +1244,8 @@ class TestQuizGameBinding:
             assert sess["quiz"]["game_id"] is None
 
     def test_stale_quiz_discarded_on_render(self, client, existing_user, monkeypatch):
-        """Verify stale quiz discarded on render.
+        """
+        Verify stale quiz discarded on render.
 
         A solo quiz followed by a fresh lobby must not resume on the
         gameplay page (hasQuiz False, no blind state probe needed).
@@ -1216,6 +1254,7 @@ class TestQuizGameBinding:
         :param existing_user: The existing_user fixture.
         :param monkeypatch: The monkeypatch fixture.
         """
+
         _login(client, existing_user)
         _mock_questions(monkeypatch, n=1)
         client.post("/api/quiz/generate", json={"num_questions": 1})
@@ -1224,12 +1263,14 @@ class TestQuizGameBinding:
         assert "var hasQuiz = false" in client.get("/gameplay").data.decode()
 
     def test_stale_state_rejected(self, client, existing_user, monkeypatch):
-        """Verify stale state rejected.
+        """
+        Verify stale state rejected.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         :param monkeypatch: The monkeypatch fixture.
         """
+
         _login(client, existing_user)
         _mock_questions(monkeypatch, n=1)
         client.post("/api/quiz/generate", json={"num_questions": 1})
@@ -1239,12 +1280,14 @@ class TestQuizGameBinding:
         assert "expired" in resp.get_json()["error"]
 
     def test_stale_answer_rejected(self, client, existing_user, monkeypatch):
-        """Verify stale answer rejected.
+        """
+        Verify stale answer rejected.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         :param monkeypatch: The monkeypatch fixture.
         """
+
         _login(client, existing_user)
         _mock_questions(monkeypatch, n=1)
         client.post("/api/quiz/generate", json={"num_questions": 1})
@@ -1256,12 +1299,14 @@ class TestQuizGameBinding:
         assert "expired" in resp.get_json()["error"]
 
     def test_stale_powerup_rejected(self, client, existing_user, monkeypatch):
-        """Verify stale powerup rejected.
+        """
+        Verify stale powerup rejected.
 
         :param client: The client fixture.
         :param existing_user: The existing_user fixture.
         :param monkeypatch: The monkeypatch fixture.
         """
+
         _login(client, existing_user)
         _mock_questions(monkeypatch, n=1)
         client.post("/api/quiz/generate", json={"num_questions": 1})
@@ -1270,7 +1315,8 @@ class TestQuizGameBinding:
         assert resp.status_code == 404
 
     def test_stale_finish_rejected(self, client, existing_user, monkeypatch):
-        """Verify stale finish rejected.
+        """
+        Verify stale finish rejected.
 
         Stale scores must never persist to the leaderboard.
 
@@ -1278,6 +1324,7 @@ class TestQuizGameBinding:
         :param existing_user: The existing_user fixture.
         :param monkeypatch: The monkeypatch fixture.
         """
+
         _login(client, existing_user)
         _mock_questions(monkeypatch, n=1)
         client.post("/api/quiz/generate", json={"num_questions": 1})
@@ -1287,7 +1334,8 @@ class TestQuizGameBinding:
     def test_matching_quiz_works_when_live(
         self, client, app, existing_user, monkeypatch
     ):
-        """Verify matching quiz works when live.
+        """
+        Verify matching quiz works when live.
 
         :param client: The client fixture.
         :param app: The app fixture.

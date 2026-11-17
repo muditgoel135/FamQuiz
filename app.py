@@ -1020,16 +1020,35 @@ def rank_of(user_id):
     :return: The 1-based rank, or 1 when the user is not ranked.
     :rtype: int
     """
+    if user_id is None:
+        return 1
+    user = db.session.get(User, user_id)
+    if user is None:
+        return 1
+    my_best = user.best_score or 0
+    my_wins = user.total_wins or 0
+    from sqlalchemy import and_, func, or_
 
-    ordered_ids = [
-        u.id
-        for u in User.query.order_by(
-            User.best_score.desc(),
-            User.total_wins.desc(),
-            User.id.asc(),  # type: ignore[attr-defined]
-        ).all()
-    ]
-    return ordered_ids.index(user_id) + 1 if user_id in ordered_ids else 1
+    ahead_count = (
+        db.session.query(func.count(User.id))
+        .filter(
+            or_(
+                func.coalesce(User.best_score, 0) > my_best,
+                and_(
+                    func.coalesce(User.best_score, 0) == my_best,
+                    func.coalesce(User.total_wins, 0) > my_wins,
+                ),
+                and_(
+                    func.coalesce(User.best_score, 0) == my_best,
+                    func.coalesce(User.total_wins, 0) == my_wins,
+                    User.id < user.id,
+                ),
+            )
+        )
+        .scalar()
+        or 0
+    )
+    return ahead_count + 1
 
 
 def create_app(config_overrides=None):
@@ -1105,6 +1124,8 @@ def create_app(config_overrides=None):
         resp.headers.setdefault("X-Frame-Options", "DENY")
         resp.headers.setdefault("X-Content-Type-Options", "nosniff")
         resp.headers.setdefault("Referrer-Policy", "same-origin")
+        if request.path.startswith("/static/"):
+            resp.headers.setdefault("Cache-Control", "public, max-age=3600")
         return resp
 
     from routes import register_routes
